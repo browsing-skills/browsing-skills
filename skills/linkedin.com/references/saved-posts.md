@@ -74,6 +74,10 @@ Modes:
       filterPattern: {
         type: "string",
         description: "Regex pattern (case-insensitive) to filter posts. Only matching posts included in markdown output. Empty = include all."
+      },
+      tags: {
+        type: "string",
+        description: "JSON object mapping tag names to regex patterns. Pattern strings may include flags with /pattern/flags syntax. Replaces the built-in tag set when provided. Example: {\"ClaudeCode\":\"/claude.?code|mcp/i\",\"Startup\":\"/founder|saas/i\"}"
       }
     }
   },
@@ -86,15 +90,31 @@ Modes:
     var expandSeeMore = (params && params.expandSeeMore != null) ? params.expandSeeMore : true;
     var filterPattern = (params && params.filterPattern) || "";
 
-    // Topic tags: named regex patterns applied to body text for auto-categorisation
-    var TAGS = {
-      "AI/ML":      /\b(ai|machine.?learning|llm|gpt|claude|gemini|deep.?learning|neural|transformer|rag|agent)\b/i,
-      "Career":     /\b(hiring|job|career|interview|promotion|resume|cv|recruiter|layoff|offer)\b/i,
-      "Leadership": /\b(leadership|management|ceo|founder|startup|culture|team|mentor)\b/i,
-      "Product":    /\b(product|roadmap|launch|feature|ux|design|saas|b2b|gtm)\b/i,
-      "Dev":        /\b(javascript|python|typescript|react|node|git|docker|kubernetes|api|backend|frontend)\b/i,
-      "Marketing":  /\b(marketing|seo|content|brand|growth|funnel|email|campaign)\b/i
-    };
+    // Build TAGS from params.tags (JSON string) or fall back to built-in defaults.
+    // Pattern values accept either a plain string (treated as case-insensitive) or
+    // "/pattern/flags" notation, e.g. "/claude.?code|mcp/i".
+    var TAGS;
+    if (params && params.tags) {
+      TAGS = {};
+      try {
+        var raw = (typeof params.tags === "string") ? JSON.parse(params.tags) : params.tags;
+        var rawKeys = Object.keys(raw);
+        for (var rk = 0; rk < rawKeys.length; rk++) {
+          var val = raw[rawKeys[rk]];
+          var m = (typeof val === "string") ? val.match(/^\/(.+)\/([gimsuy]*)$/) : null;
+          TAGS[rawKeys[rk]] = m ? new RegExp(m[1], m[2] || "i") : new RegExp(val, "i");
+        }
+      } catch(e) { TAGS = {}; }
+    } else {
+      TAGS = {
+        "AI/ML":      /\b(ai|machine.?learning|llm|gpt|claude|gemini|deep.?learning|neural|transformer|rag|agent)\b/i,
+        "Career":     /\b(hiring|job|career|interview|promotion|resume|cv|recruiter|layoff|offer)\b/i,
+        "Leadership": /\b(leadership|management|ceo|founder|startup|culture|team|mentor)\b/i,
+        "Product":    /\b(product|roadmap|launch|feature|ux|design|saas|b2b|gtm)\b/i,
+        "Dev":        /\b(javascript|python|typescript|react|node|git|docker|kubernetes|api|backend|frontend)\b/i,
+        "Marketing":  /\b(marketing|seo|content|brand|growth|funnel|email|campaign)\b/i
+      };
+    }
 
     var sleep = function(ms) { return new Promise(function(r) { setTimeout(r, ms); }); };
 
