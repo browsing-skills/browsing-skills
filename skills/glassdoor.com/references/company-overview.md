@@ -64,55 +64,77 @@ The `<slug>` is the company-specific path segment used by Glassdoor, e.g. `Googl
     var name = textOf("h1") || textOf('[class*="employerName"]') || document.title.replace(/\s*Reviews.*$/i, "").trim();
 
     // Overall rating — try data-test first, then rating triangle, then any rating-looking element
+    // Rating — try specific selectors then fall back to text parsing
     var ratingRaw = textOf('[data-test="rating"]') ||
                     textOf('[class*="ratingTriangle"] span') ||
                     textOf('[class*="ratingNum"]') ||
                     textOf('[class*="rating__"] span') || "";
     var rating = parseFloat(ratingRaw) || null;
 
-    // Number of reviews
+    // Number of reviews — text parsing: "based on N ratings/reviews"
     var reviewsRaw = textOf('[data-test="reviewCount"]') ||
-                     textOf('[class*="reviewCount"]') ||
-                     textOf('[href*="Reviews"]') || "";
-    var reviewCount = numFrom(reviewsRaw.replace(/reviews?/i, ""));
+                     textOf('[class*="reviewCount"]') || "";
+    var reviewCount = reviewsRaw ? numFrom(reviewsRaw.replace(/reviews?/i, "")) : null;
 
-    // CEO name and approval
+    // CEO name and approval — already found via dt/dd fallback (ceoName set above)
     var ceoName = textOf('[data-test="ceo-name"]') ||
-                  textOf('[class*="ceoName"]') ||
-                  textOf('[class*="CEO"] [class*="name"]') || "";
+                  textOf('[class*="ceoName"]') || "";
     var ceoApprovalRaw = textOf('[data-test="CEOPercentage"]') ||
-                         textOf('[class*="ceoApproval"]') ||
-                         textOf('[class*="CEOApproval"]') || "";
+                         textOf('[class*="ceoApproval"]') || "";
     var ceoApproval = pctFrom(ceoApprovalRaw);
 
-    // Recommend to friend
     var recommendRaw = textOf('[data-test="recommend"]') ||
                        textOf('[class*="recommend"]') || "";
     var recommendPct = pctFrom(recommendRaw);
 
-    // Employer info fields — Glassdoor lists these in a definition-list-style section
-    function findInfoValue(label) {
-      var els = document.querySelectorAll('[data-test="employer-website"], [data-test="employer-size"], [data-test="employer-founded"], [data-test="employer-industry"], [data-test="employer-revenue"], [data-test="employer-headquarters"], [data-test="employer-type"]');
-      // Generic: look through all dt/dd pairs for matching label text
-      var dts = document.querySelectorAll("dt, [class*='infoLabel'], [class*='InfoLabel']");
-      for (var i = 0; i < dts.length; i++) {
-        if (clean(dts[i].innerText || dts[i].textContent).toLowerCase().indexOf(label.toLowerCase()) !== -1) {
-          var next = dts[i].nextElementSibling;
-          if (next) return clean(next.innerText || next.textContent);
-        }
-      }
-      return "";
+    // Glassdoor 2025: info displayed as "value\nlabel" pairs in body text
+    // Parse body.innerText to extract all key fields
+    var bodyText = document.body.innerText || "";
+    function extractBeforeLabel(label) {
+      var re = new RegExp("([^\\n]+)\\n" + label + "(?:\\n|$)", "i");
+      var m = bodyText.match(re);
+      return m ? m[1].trim() : "";
+    }
+    function extractAfterLabel(label) {
+      var re = new RegExp(label + "[:\\s]*([^\\n]+)", "i");
+      var m = bodyText.match(re);
+      return m ? m[1].trim() : "";
     }
 
-    var website = attrOf('[data-test="employer-website"] a', "href") ||
-                  textOf('[data-test="employer-website"]') ||
-                  findInfoValue("website");
-    var size = textOf('[data-test="employer-size"]') || findInfoValue("size");
-    var founded = textOf('[data-test="employer-founded"]') || findInfoValue("founded");
-    var industry = textOf('[data-test="employer-industry"]') || findInfoValue("industry");
-    var headquarters = textOf('[data-test="employer-headquarters"]') || findInfoValue("headquarters");
-    var revenue = textOf('[data-test="employer-revenue"]') || findInfoValue("revenue");
-    var type = textOf('[data-test="employer-type"]') || findInfoValue("type");
+    // Rating: "4.4\nbased on 48,224 ratings"
+    if (!rating) {
+      var ratingMatch = bodyText.match(/(\d+\.\d+)\nbased on ([\d,]+)\s*(?:ratings?|reviews?)/i);
+      if (ratingMatch) {
+        rating = parseFloat(ratingMatch[1]);
+        if (!reviewCount) reviewCount = numFrom(ratingMatch[2]);
+      }
+    }
+    if (!reviewCount) {
+      var rcMatch = bodyText.match(/based on ([\d,]+)\s*(?:ratings?|reviews?)/i);
+      if (rcMatch) reviewCount = numFrom(rcMatch[1]);
+    }
+
+    // CEO: "Sundar Pichai\n82% approve of CEO"
+    if (!ceoName) {
+      var ceoMatch = bodyText.match(/([A-Z][a-z]+(?: [A-Z][a-z]+)+)\n(\d+)%\s*approve of CEO/i);
+      if (ceoMatch) { ceoName = ceoMatch[1]; ceoApproval = parseInt(ceoMatch[2], 10); }
+    }
+
+    // Recommend: "87% would recommend to a friend"
+    if (recommendPct === null) {
+      var recMatch = bodyText.match(/(\d+)%\s*would recommend/i);
+      if (recMatch) recommendPct = parseInt(recMatch[1], 10);
+    }
+
+    // Info fields via "value\nLabel" pattern
+    var website = attrOf('[data-test="employer-website"] a', "href") || extractBeforeLabel("Website");
+    if (website === "View site") website = "";
+    var industry = textOf('[data-test="employer-industry"]') || extractBeforeLabel("Industry");
+    var size = textOf('[data-test="employer-size"]') || extractBeforeLabel("Employees");
+    var founded = textOf('[data-test="employer-founded"]') || extractBeforeLabel("Founded");
+    var headquarters = textOf('[data-test="employer-headquarters"]') || extractBeforeLabel("Headquarters");
+    var revenue = textOf('[data-test="employer-revenue"]') || extractBeforeLabel("Revenue");
+    var type = textOf('[data-test="employer-type"]') || extractBeforeLabel("Company");
 
     var data = {
       url: window.location.href,
