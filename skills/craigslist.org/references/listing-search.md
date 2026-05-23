@@ -64,8 +64,8 @@ Example: `https://sfbay.craigslist.org/search/apa?query=2+bedroom`
 
     var listings = [];
 
-    // Craigslist 2024/2025 redesigned results: li.cl-search-result
-    var rows = document.querySelectorAll('li.cl-search-result');
+    // Craigslist 2024/2025: div.cl-search-result (gallery and list modes)
+    var rows = document.querySelectorAll('div.cl-search-result');
 
     // Fallback: classic layout result-row
     if (rows.length === 0) {
@@ -75,39 +75,34 @@ Example: `https://sfbay.craigslist.org/search/apa?query=2+bedroom`
     for (var i = 0; i < rows.length && listings.length < limit; i++) {
       var row = rows[i];
 
-      // Title + URL — new layout
-      var titleEl = row.querySelector('a.posting-title') || row.querySelector('.result-title') || row.querySelector('a[href*=".html"]');
-      var title = titleEl ? titleEl.textContent.trim() : "";
-      var url = titleEl ? (titleEl.href || "") : "";
+      // Title: element title attribute is most reliable in gallery view
+      var title = row.getAttribute("title") || "";
+
+      // URL: first anchor pointing to a listing page
+      var linkEl = row.querySelector('a[href*=".html"]') || row.querySelector("a");
+      var url = linkEl ? (linkEl.href || "") : "";
+      if (!title && linkEl) title = linkEl.textContent.trim();
 
       // Price
-      var priceEl = row.querySelector('.priceinfo') || row.querySelector('.result-price') || row.querySelector('[class*="price"]');
+      var priceEl = row.querySelector('.priceinfo') || row.querySelector('.result-price');
       var price = priceEl ? priceEl.textContent.trim() : "";
-
-      // Location / hood
-      var hoodEl = row.querySelector('.meta .separator ~ *') || row.querySelector('.result-hood') || row.querySelector('[class*="hood"]');
-      var location = hoodEl ? hoodEl.textContent.trim().replace(/^\(|\)$/g, "") : "";
-
-      // Date posted
-      var dateEl = row.querySelector('time') || row.querySelector('.result-date');
-      var datePosted = "";
-      if (dateEl) {
-        datePosted = dateEl.getAttribute("datetime") || dateEl.textContent.trim();
-      }
 
       // Thumbnail
       var imgEl = row.querySelector('img');
       var thumbnail = imgEl ? (imgEl.src || imgEl.getAttribute("data-src") || "") : "";
 
-      // New layout: extract location from meta line if hood not found
-      if (!location) {
-        var metaEl = row.querySelector(".meta");
-        if (metaEl) {
-          var metaText = metaEl.textContent.trim();
-          // meta format: "date · location" or just location
-          var parts = metaText.split(/·|•/).map(function(p) { return p.trim(); });
-          if (parts.length >= 2) location = parts[1];
-          else location = parts[0];
+      // Parse innerText lines for date and location
+      var lines = (row.innerText || "").split("\n")
+        .map(function(l) { return l.trim(); })
+        .filter(function(l) { return l && l !== "•"; });
+      var datePosted = "";
+      var location = "";
+      for (var li = 0; li < lines.length; li++) {
+        var line = lines[li];
+        if (!datePosted && /ago|min|hr|just now|\d+[smh]/i.test(line)) { datePosted = line; continue; }
+        if (!location && line.indexOf("$") === -1 &&
+            !/^\d+[a-z]/.test(line) && line !== title && line.length > 2) {
+          location = line;
         }
       }
 
