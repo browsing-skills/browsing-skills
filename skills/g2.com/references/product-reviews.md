@@ -106,10 +106,20 @@ Examples:
       }
       var rating = parseFloat(ratingRaw) || null;
 
-      // Review title
+      // Review title — G2 2025: title is a quoted string in innerText, e.g. `"Notion's custom..."` before the `X/5` line
       var title = textOf(el, '[itemprop="name"]') ||
                   textOf(el, '[class*="review-title"]') ||
                   textOf(el, 'h3') || "";
+      if (!title) {
+        var elLines = (el.innerText || el.textContent || "").split("\n").map(clean).filter(Boolean);
+        for (var tli = 0; tli < elLines.length; tli++) {
+          var tl = elLines[tli];
+          if (/^[""“”]/.test(tl) || /[""“”]$/.test(tl)) {
+            title = tl.replace(/^[""“]|[""”]$/g, "").trim();
+            break;
+          }
+        }
+      }
 
       // Pros — "What do you like best?" section
       var pros = "";
