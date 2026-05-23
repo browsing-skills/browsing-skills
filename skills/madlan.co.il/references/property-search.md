@@ -60,90 +60,43 @@ Use when the user wants to search Madlan for properties for sale in a city and e
 
     var listings = [];
 
-    // Strategy 1: article or li cards with data-testid attributes
-    var cards = document.querySelectorAll('article[data-testid], li[data-testid*="listing"], li[data-testid*="result"]');
-
-    // Strategy 2: generic article/li cards
-    if (cards.length === 0) {
-      cards = document.querySelectorAll('article, li[class*="listing"], li[class*="result"], li[class*="card"]');
-    }
-
-    // Strategy 3: any anchor containing ₪ in its parent container
-    if (cards.length === 0) {
-      var priceEls = document.querySelectorAll('*');
-      var cardSet = [];
-      for (var pi = 0; pi < priceEls.length; pi++) {
-        var el = priceEls[pi];
-        if (el.childElementCount === 0 && el.textContent.indexOf("₪") > -1) {
-          // walk up to a reasonable card boundary
-          var parent = el.parentElement;
-          for (var depth = 0; depth < 5 && parent; depth++) {
-            if (parent.tagName === "ARTICLE" || parent.tagName === "LI" || parent.tagName === "DIV" && parent.offsetHeight > 80) {
-              if (cardSet.indexOf(parent) === -1) cardSet.push(parent);
-              break;
-            }
-            parent = parent.parentElement;
-          }
-        }
-      }
-      cards = cardSet;
-    }
+    // Madlan 2025: listing cards are <a href="/listings/<id>"> anchors
+    // Each anchor's textContent: price | rooms/sqm | address
+    var cardLinks = document.querySelectorAll('a[href*="/listings/"]');
 
     var seen = {};
 
-    for (var i = 0; i < cards.length && listings.length < limit; i++) {
-      var card = cards[i];
+    for (var i = 0; i < cardLinks.length && listings.length < limit; i++) {
+      var card = cardLinks[i];
+      var listingUrl = card.href || "";
+      if (!listingUrl || seen[listingUrl]) continue;
+      seen[listingUrl] = true;
+
       var cardText = card.innerText || card.textContent || "";
+      if (!cardText || cardText.indexOf("₪") === -1) continue;
 
-      // Skip navigation, header, footer cards
-      if (card.closest("nav, header, footer")) continue;
-      if (cardText.trim().length < 20) continue;
+      var lines = cardText.split(/\n/).map(function(l) { return l.trim(); }).filter(Boolean);
 
-      // Listing URL
-      var linkEl = card.querySelector('a[href*="/item/"], a[href*="/listing/"], a[href*="/for-sale/"]');
-      if (!linkEl) linkEl = card.querySelector("a[href]");
-      var listingUrl = linkEl ? (linkEl.href || "") : "";
-      if (listingUrl && seen[listingUrl]) continue;
-      if (listingUrl) seen[listingUrl] = true;
-
-      // Address / neighborhood — try data-testid first
-      var addrEl = card.querySelector('[data-testid*="address"], [data-testid*="street"], [data-testid*="neighborhood"]');
-      var address = addrEl ? addrEl.textContent.trim() : "";
-
-      // Price — look for ₪
-      var priceEl = card.querySelector('[data-testid*="price"]');
-      var price = priceEl ? priceEl.textContent.trim() : "";
-      if (!price) {
-        var allEls = card.querySelectorAll("*");
-        for (var ai = 0; ai < allEls.length; ai++) {
-          if (allEls[ai].childElementCount === 0 && allEls[ai].textContent.indexOf("₪") > -1) {
-            price = allEls[ai].textContent.trim();
-            break;
-          }
-        }
-      }
-
-      // Rooms (חדרים), floor (קומה), size (מ"ר / מ״ר)
+      // Price: line with ₪
+      var price = "";
       var rooms = "";
       var floor = "";
       var sizeSqm = "";
+      var address = "";
 
-      var lines = cardText.split(/\n/).map(function(l) { return l.trim(); }).filter(Boolean);
       for (var li2 = 0; li2 < lines.length; li2++) {
         var line = lines[li2];
-        if (/חדר/.test(line) && !rooms) rooms = line;
-        if (/קומה/.test(line) && !floor) floor = line;
-        if (/מ[""״]ר|מ"ר|מ״ר|sqm/i.test(line) && !sizeSqm) sizeSqm = line;
+        if (!price && line.indexOf("₪") > -1) { price = line; continue; }
+        if (/חדר|\d+\s*חד/.test(line) && !rooms) { rooms = line; continue; }
+        if (/מ[""״]ר|מ"ר|מ״ר/i.test(line) && !sizeSqm) { sizeSqm = line; continue; }
+        if (/קומה/.test(line) && !floor) { floor = line; continue; }
       }
 
-      // Fallback: try address from first non-price, non-numeric line
-      if (!address) {
-        for (var li3 = 0; li3 < lines.length; li3++) {
-          var candidate = lines[li3];
-          if (candidate.indexOf("₪") === -1 && !/^\d+$/.test(candidate) && candidate.length > 3) {
-            address = candidate;
-            break;
-          }
+      // Address: last meaningful line that's not price/rooms/sqm
+      for (var li3 = lines.length - 1; li3 >= 0; li3--) {
+        var l3 = lines[li3];
+        if (l3 !== price && l3 !== rooms && l3 !== sizeSqm && l3 !== floor && l3.length > 5 && l3.indexOf("₪") === -1) {
+          address = l3; break;
         }
       }
 
