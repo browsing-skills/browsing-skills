@@ -56,72 +56,101 @@ Use when the user wants the full details of a specific Zillow property listing.
     var data = {};
     data.listingUrl = window.location.href.split("?")[0];
 
-    // Main summary container
-    var summaryEl = document.querySelector('[data-testid="home-details-summary-container"]');
-    if (!summaryEl) summaryEl = document.body;
+    // 2025 Zillow listing pages: innerText parsing is most reliable
+    var bodyLines = (document.body.innerText || "").split("\n").map(function(l){ return l.trim(); }).filter(Boolean);
 
-    data.price = getText('[data-testid="price"]') ||
-                 getText('span[data-testid="home-details-price"]') ||
-                 getText('.ds-summary-row .ds-value');
-
-    // Address
-    data.address = getText('h1') ||
-                   getText('[data-testid="home-details-address"]') ||
-                   getText('.ds-address-container');
-
-    // Beds / baths / sqft from summary row
-    var bedBathEls = document.querySelectorAll('[data-testid="bed-bath-item"]');
-    var bedBathArr = [];
-    for (var i = 0; i < bedBathEls.length; i++) {
-      bedBathArr.push(bedBathEls[i].textContent.trim());
-    }
-
-    if (bedBathArr.length >= 1) data.beds = bedBathArr[0];
-    if (bedBathArr.length >= 2) data.baths = bedBathArr[1];
-    if (bedBathArr.length >= 3) data.sqft = bedBathArr[2];
-
-    // Fallback: parse summary row spans
-    if (!data.beds) {
-      var spans = document.querySelectorAll('.ds-bed-bath-living-area span');
-      for (var si = 0; si < spans.length; si++) {
-        var st = spans[si].textContent.trim();
-        if (/bd|bed/i.test(st) && !data.beds) data.beds = st;
-        else if (/ba|bath/i.test(st) && !data.baths) data.baths = st;
-        else if (/sqft/i.test(st) && !data.sqft) data.sqft = st;
+    // Helper: find value before a label line
+    var findBeforeLabel = function(label) {
+      for (var i = 1; i < bodyLines.length; i++) {
+        if (bodyLines[i] === label || bodyLines[i].indexOf(label) === 0) {
+          return bodyLines[i - 1].replace(label, "").trim();
+        }
       }
+      return "";
+    };
+
+    // Price — first line matching $X,XXX,XXX format
+    data.price = "";
+    for (var pri = 0; pri < bodyLines.length; pri++) {
+      if (/^\$[\d,]+$/.test(bodyLines[pri])) { data.price = bodyLines[pri]; break; }
+    }
+    if (!data.price) data.price = getText('[data-testid="price"]') || getText('span[data-testid="home-details-price"]');
+
+    // Address — h1 is still reliable on Zillow listing pages
+    data.address = getText('h1') || getText('[data-testid="home-details-address"]');
+
+    // Beds / baths / sqft — value before label (e.g. "3\nbeds\n2\nbaths\n1,730\nsqft")
+    data.beds = findBeforeLabel("beds") || findBeforeLabel("bd");
+    data.baths = findBeforeLabel("baths") || findBeforeLabel("ba");
+    data.sqft = findBeforeLabel("sqft");
+
+    // DOM fallback for beds/baths/sqft
+    if (!data.beds) {
+      var bedBathEls = document.querySelectorAll('[data-testid="bed-bath-item"]');
+      var bedBathArr = [];
+      for (var i = 0; i < bedBathEls.length; i++) { bedBathArr.push(bedBathEls[i].textContent.trim()); }
+      if (bedBathArr.length >= 1) data.beds = bedBathArr[0];
+      if (bedBathArr.length >= 2) data.baths = bedBathArr[1];
+      if (bedBathArr.length >= 3) data.sqft = bedBathArr[2];
     }
 
-    // Description
-    data.description = getText('[data-testid="description-text"]') ||
-                        getText('.ds-overview-section');
+    // Description — prefer data-testid; fallback to largest non-legal paragraph
+    data.description = getText('[data-testid="description-text"]') || getText('.ds-overview-section');
+    if (!data.description) {
+      var pEls = document.querySelectorAll('p');
+      var bestDesc = "";
+      for (var pi = 0; pi < pEls.length; pi++) {
+        var pt = pEls[pi].textContent.trim();
+        if (pt.length > bestDesc.length && !/copyright|mls|listing data|idxbroker|multiple listing/i.test(pt)) {
+          bestDesc = pt;
+        }
+      }
+      // If still empty, find the paragraph after "What's special" in body text
+      if (!bestDesc) {
+        var wsIdx = document.body.innerText.indexOf("What's special");
+        if (wsIdx > -1) {
+          var afterSpecial = document.body.innerText.substring(wsIdx).split("\n\n");
+          for (var wsi = 1; wsi < afterSpecial.length; wsi++) {
+            var ws = afterSpecial[wsi].trim();
+            if (ws.length > 100 && !/^[A-Z\s]+$/.test(ws)) { bestDesc = ws; break; }
+          }
+        }
+      }
+      data.description = bestDesc;
+    }
 
     // Zestimate
     data.zestimate = getText('[data-testid="zestimate-text"]') ||
                      getText('[class*="Zestimate"]');
 
-    // Key facts (year built, property type, lot size, etc.)
+    // Key facts — 2025 Zillow listing pages: parse from body text lines
     var facts = {};
+    for (var bli = 0; bli < bodyLines.length; bli++) {
+      var bl = bodyLines[bli];
+      if (/^built in \d{4}/i.test(bl)) facts.yearBuilt = bl.match(/\d{4}/)[0];
+      if (/^(single family|condo|townhouse|multi-family|land|manufactured)/i.test(bl) && !facts.propertyType) facts.propertyType = bl;
+      if (/^\d[,\d]*\s+sqft lot/i.test(bl) && !facts.lotSize) facts.lotSize = bl;
+      if (/^hoa/i.test(bl) && !facts.hoaFee) facts.hoaFee = bl;
+    }
+    // DOM fallback
     var factEls = document.querySelectorAll('[class*="fact-container"], [data-testid*="fact"]');
     for (var fi = 0; fi < factEls.length; fi++) {
       var fText = factEls[fi].textContent.trim();
-      if (/year built/i.test(fText)) facts.yearBuilt = fText.replace(/.*:\s*/, "").trim();
-      if (/lot size/i.test(fText)) facts.lotSize = fText.replace(/.*:\s*/, "").trim();
-      if (/property type/i.test(fText)) facts.propertyType = fText.replace(/.*:\s*/, "").trim();
-      if (/hoa/i.test(fText)) facts.hoaFee = fText.replace(/.*:\s*/, "").trim();
-      if (/days on zillow/i.test(fText)) facts.daysOnMarket = fText.replace(/.*:\s*/, "").trim();
-    }
-
-    // Fallback: scrape summary table rows
-    if (!facts.yearBuilt) {
-      var tableRows = document.querySelectorAll('ul[class*="summary"] li, .ds-home-fact-list li');
-      for (var tri = 0; tri < tableRows.length; tri++) {
-        var rTxt = tableRows[tri].textContent.trim();
-        if (/year built/i.test(rTxt) && !facts.yearBuilt) facts.yearBuilt = rTxt;
-        if (/lot/i.test(rTxt) && !facts.lotSize) facts.lotSize = rTxt;
-        if (/hoa/i.test(rTxt) && !facts.hoaFee) facts.hoaFee = rTxt;
-      }
+      if (/year built/i.test(fText) && !facts.yearBuilt) facts.yearBuilt = fText.replace(/.*:\s*/, "").trim();
+      if (/lot size/i.test(fText) && !facts.lotSize) facts.lotSize = fText.replace(/.*:\s*/, "").trim();
+      if (/property type/i.test(fText) && !facts.propertyType) facts.propertyType = fText.replace(/.*:\s*/, "").trim();
+      if (/hoa/i.test(fText) && !facts.hoaFee) facts.hoaFee = fText.replace(/.*:\s*/, "").trim();
     }
     data.facts = facts;
+
+    // Top-level convenience fields from facts
+    data.propertyType = facts.propertyType || null;
+    data.listingStatus = null;
+    for (var sli = 0; sli < bodyLines.length; sli++) {
+      if (/^(for sale|for rent|pending|sold|off market)/i.test(bodyLines[sli])) {
+        data.listingStatus = bodyLines[sli]; break;
+      }
+    }
 
     // Agent / listing agent
     data.agentName = getText('[data-testid="attribution-LISTING_AGENT"]') ||
