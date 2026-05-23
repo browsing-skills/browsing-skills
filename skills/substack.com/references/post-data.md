@@ -52,17 +52,32 @@ Examples: `https://stratechery.substack.com/p/why-openai-is-so-powerful`, `https
       return isNaN(n) ? null : n;
     }
 
+    // JSON-LD — most reliable on custom-domain Substack pages (no time elements, no class-based selectors)
+    var jsonLdData = {};
+    var jsonLdEl = document.querySelector('script[type="application/ld+json"]');
+    if (jsonLdEl) {
+      try {
+        var parsed = JSON.parse(jsonLdEl.textContent);
+        jsonLdData.title = parsed.headline || "";
+        jsonLdData.subtitle = parsed.description || "";
+        jsonLdData.date = parsed.datePublished || "";
+        if (parsed.author) {
+          jsonLdData.author = Array.isArray(parsed.author) ? parsed.author[0].name : (parsed.author.name || parsed.author);
+        }
+      } catch (e2) {}
+    }
+
     // Title
-    var title = textOf(["h1.post-title", "h1[class*='post-title']", "h1[class*='postTitle']", "h1"]);
+    var title = jsonLdData.title || textOf(["h1.post-title", "h1[class*='post-title']", "h1[class*='postTitle']", "h1"]);
 
     // Subtitle
-    var subtitle = textOf([
+    var subtitle = jsonLdData.subtitle || textOf([
       "h3.subtitle", ".subtitle", "[class*='subtitle']",
       "h2.post-subtitle", "h2[class*='subtitle']"
     ]);
 
     // Author
-    var author = textOf([
+    var author = jsonLdData.author || textOf([
       ".author-name", "[class*='author-name']",
       ".byline-name", "[class*='byline-name']",
       "a[href*='/about']", ".pencraft-author"
@@ -74,8 +89,11 @@ Examples: `https://stratechery.substack.com/p/why-openai-is-so-powerful`, `https
     ]);
 
     // Date
-    var dateEl = document.querySelector("time[datetime], [class*='post-date'] time, .post-date, [class*='date'] time");
-    var date = dateEl ? (dateEl.getAttribute("datetime") || clean(dateEl.innerText || dateEl.textContent)) : "";
+    var date = jsonLdData.date || "";
+    if (!date) {
+      var dateEl = document.querySelector("time[datetime], [class*='post-date'] time, .post-date, [class*='date'] time");
+      date = dateEl ? (dateEl.getAttribute("datetime") || clean(dateEl.innerText || dateEl.textContent)) : "";
+    }
 
     // Body text — try .available-content first (Substack standard), then .body, then article
     var bodyEl = document.querySelector(
@@ -90,9 +108,9 @@ Examples: `https://stratechery.substack.com/p/why-openai-is-so-powerful`, `https
     var likeRaw = likeEl ? clean(likeEl.innerText || likeEl.textContent) : "";
     var likeCount = numFrom(likeRaw);
 
-    // Comment count
+    // Comment count — Substack 2025 uses a generic [class*='comment'] element containing just the count
     var commentEl = document.querySelector(
-      "[class*='comment-count'], [class*='commentCount'], a[href*='#comments'], .comment-btn"
+      "[class*='comment-count'], [class*='commentCount'], a[href*='#comments'], .comment-btn, [class*='comment']"
     );
     var commentRaw = commentEl ? clean(commentEl.innerText || commentEl.textContent) : "";
     var commentCount = numFrom(commentRaw.replace(/comments?/i, ""));
