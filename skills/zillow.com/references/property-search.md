@@ -56,49 +56,47 @@ Use when the user wants to search Zillow for properties in a city and extract vi
     var data = {};
     data.pageUrl = window.location.href;
 
-    var cards = document.querySelectorAll('article[data-test="property-card"]');
+    // Zillow 2025: articles use data-c11n-component="PropertyCard.Root"
+    var cards = document.querySelectorAll('article[data-c11n-component="PropertyCard.Root"]');
+    if (cards.length === 0) cards = document.querySelectorAll('article[data-test="property-card"]');
     var listings = [];
 
     for (var i = 0; i < cards.length && listings.length < limit; i++) {
       var card = cards[i];
 
-      var addrEl = card.querySelector('[data-test="property-card-addr"]');
-      var address = addrEl ? addrEl.textContent.trim() : "";
+      // Link
+      var linkEl = card.querySelector('a[href*="/homedetails/"]') || card.querySelector("a");
+      var listingUrl = linkEl ? linkEl.href : "";
 
-      var priceEl = card.querySelector('[data-test="property-card-price"]');
-      var price = priceEl ? priceEl.textContent.trim() : "";
+      // Parse innerText — format: price | beds/baths/sqft | type | address | agent | ...
+      var lines = (card.innerText || "").split("\n")
+        .map(function(l) { return l.trim(); })
+        .filter(function(l) { return l && !/^(Save|More|Previous|Next|Open:)/i.test(l); });
 
-      // beds/baths/sqft live in a ul > li list
+      var price = "";
+      var address = "";
       var beds = "";
       var baths = "";
       var sqft = "";
-      var liEls = card.querySelectorAll("ul li");
-      for (var j = 0; j < liEls.length; j++) {
-        var txt = liEls[j].textContent.trim();
-        if (/bd|bed/i.test(txt)) beds = txt;
-        else if (/ba|bath/i.test(txt)) baths = txt;
-        else if (/sqft|sq\s*ft/i.test(txt)) sqft = txt;
-      }
+      var propertyType = "";
+      var daysOnMarket = "";
 
-      // Some cards expose individual data-test attributes for beds
-      if (!beds) {
-        var bedsEl = card.querySelector('[data-test="property-card-beds"]');
-        beds = bedsEl ? bedsEl.textContent.trim() : "";
+      for (var j = 0; j < lines.length; j++) {
+        var line = lines[j];
+        if (!price && /^\$[\d,]+/.test(line)) { price = line; continue; }
+        if (!beds && /\d+\s*bd/i.test(line)) {
+          var bm = line.match(/(\d+\s*bds?)/i); if (bm) beds = bm[1];
+          var bam = line.match(/(\d+\s*ba)/i); if (bam) baths = bam[1];
+          var sm = line.match(/([\d,]+\s*sqft)/i); if (sm) sqft = sm[1];
+          continue;
+        }
+        if (!propertyType && /for sale|for rent|foreclosure|new home|land/i.test(line)) { propertyType = line; continue; }
+        if (!address && /,\s*[A-Z]{2}\s*\d{5}/.test(line)) { address = line; continue; }
+        if (!daysOnMarket && /day|month|week/i.test(line) && line.length < 30) daysOnMarket = line;
       }
-
-      var linkEl = card.querySelector('a[data-test="property-card-link"]');
-      if (!linkEl) linkEl = card.querySelector('a[href*="/homedetails/"]');
-      var listingUrl = linkEl ? linkEl.href : "";
 
       var imgEl = card.querySelector("img");
       var thumbnail = imgEl ? (imgEl.src || imgEl.getAttribute("data-src") || "") : "";
-
-      var domEl = card.querySelector('[class*="days"]');
-      var daysOnMarket = domEl ? domEl.textContent.trim() : "";
-
-      var typeEl = card.querySelector('[class*="StyledPropertyCardHomeType"]');
-      if (!typeEl) typeEl = card.querySelector('[class*="property-type"]');
-      var propertyType = typeEl ? typeEl.textContent.trim() : "";
 
       if (!address && !price) continue;
 
