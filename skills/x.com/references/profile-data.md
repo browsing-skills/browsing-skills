@@ -71,14 +71,8 @@ Use when the user wants info about a specific X user (bio, followers, etc.). Req
       var avatarImgs = primaryCol.querySelectorAll("img[src*=profile_images]");
       if (avatarImgs.length > 0) data.avatarUrl = avatarImgs[0].src.replace(/_bigger|_normal|_x96|_200x200|_400x400/g, "");
     }
-    var headerItems = document.querySelector("[data-testid=UserProfileHeader_Items]");
-    if (headerItems) {
-      var headerLinks = headerItems.querySelectorAll("a[href]");
-      for (var k = 0; k < headerLinks.length; k++) {
-        var lhref = headerLinks[k].getAttribute("href");
-        if (lhref && !lhref.includes("x.com") && !lhref.includes("twitter.com")) data.website = headerLinks[k].textContent.trim();
-      }
-    }
+    var websiteEl = document.querySelector("[data-testid=UserUrl]");
+    if (websiteEl) { var websiteLink = websiteEl.querySelector("a[href]"); data.website = websiteLink ? websiteLink.textContent.trim() : ""; }
     if (mode === "display") {
       var h = "<div style=\"font-family:-apple-system,sans-serif;background:#0f0f0f;color:#e0e0e0;padding:24px;max-width:600px;margin:0 auto;border-radius:12px;\">";
       h += "<div style=\"display:flex;align-items:center;gap:16px;margin-bottom:16px;\">";
