@@ -51,60 +51,67 @@ Example: `https://www.glassdoor.com/Reviews/Google-Reviews-E9079.htm`. The slug 
     }
 
     function parseReview(el) {
-      // Rating: try data-test or class-based rating number
-      var ratingEl = el.querySelector('[class*="ratingNumber"], [class*="ratingNum"], [class*="EIReviewsRatingsStylesV2__ratingNum"]');
-      var ratingRaw = ratingEl ? clean(ratingEl.innerText || ratingEl.textContent) : "";
-      var rating = parseFloat(ratingRaw) || null;
+      // 2025 Glassdoor uses <article> with no class — parse innerText directly.
+      // Format: rating\n"New"\ndate\ntitle\nrole\nstatus\n...\nPros\n\npros text\nCons\n\ncons text
+      var lines = (el.innerText || el.textContent || "").split("\n").map(clean).filter(Boolean);
 
-      // Title
-      var titleEl = el.querySelector('[class*="reviewTitle"], [class*="ReviewTitle"], [data-test="review-title"], h2, h3');
-      var title = titleEl ? clean(titleEl.innerText || titleEl.textContent) : "";
+      var rating = null;
+      var date = "";
+      var title = "";
+      var role = "";
+      var pros = "";
+      var cons = "";
+      var helpful = null;
 
-      // Date
-      var dateEl = el.querySelector('[class*="reviewDate"], [class*="ReviewDate"], time, [data-test="review-date"]');
-      var date = dateEl ? (dateEl.getAttribute("datetime") || clean(dateEl.innerText || dateEl.textContent)) : "";
-
-      // Reviewer role / position
-      var roleEl = el.querySelector('[class*="authorJobTitle"], [class*="reviewer"], [class*="Reviewer"], [data-test="reviewer"]');
-      var role = roleEl ? clean(roleEl.innerText || roleEl.textContent) : "";
-
-      // Pros and cons — Glassdoor uses labeled sections with innerText like "Pros\nsome text\nCons\nother text"
-      // Try selector-based approach first, fall back to innerText line parsing
-      var pros = textOf(el, '[data-test="pros"], [class*="pros__"], [class*="EIReviewDetailsV2__pro"]');
-      var cons = textOf(el, '[data-test="cons"], [class*="cons__"], [class*="EIReviewDetailsV2__con"]');
-
-      if (!pros && !cons) {
-        // Line-parsing fallback on the full review text
-        var lines = (el.innerText || el.textContent || "").split("\n");
-        var prosMode = false;
-        var consMode = false;
-        var prosLines = [];
-        var consLines = [];
-        for (var i = 0; i < lines.length; i++) {
-          var line = clean(lines[i]);
-          if (!line) continue;
-          if (/^pros$/i.test(line)) { prosMode = true; consMode = false; continue; }
-          if (/^cons$/i.test(line)) { consMode = true; prosMode = false; continue; }
-          if (/^(advice|overall|rating|helpful)/i.test(line)) { prosMode = false; consMode = false; }
-          if (prosMode) prosLines.push(line);
-          if (consMode) consLines.push(line);
-        }
-        pros = prosLines.join(" ");
-        cons = consLines.join(" ");
+      // First non-empty line matching a decimal number is the rating
+      var headerCount = 0; // count of header lines consumed
+      for (var hi = 0; hi < Math.min(lines.length, 6); hi++) {
+        var hl = lines[hi];
+        if (rating === null && /^\d+\.\d+$/.test(hl)) { rating = parseFloat(hl); headerCount = hi + 1; continue; }
+        if (rating !== null && !date && /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b/i.test(hl)) { date = hl; headerCount = hi + 1; continue; }
+        if (rating !== null && date && !title && hl.length > 5 && !/^(New|Updated|Featured)$/i.test(hl)) { title = hl; headerCount = hi + 1; break; }
       }
 
-      // Helpful count
-      var helpfulEl = el.querySelector('[class*="helpfulCount"], [class*="helpful"], [data-test="helpful"]');
-      var helpfulRaw = helpfulEl ? clean(helpfulEl.innerText || helpfulEl.textContent) : "";
-      var helpful = numFrom(helpfulRaw);
+      // Next meaningful line after title = role
+      if (headerCount < lines.length) {
+        var candidate = lines[headerCount];
+        if (candidate && !/^(Recommend|CEO|Business|Current|Former|Anonymous|full[- ]time|part[- ]time)/i.test(candidate)) {
+          role = candidate;
+        }
+      }
+
+      // Pros and cons from line parsing
+      var prosMode = false;
+      var consMode = false;
+      var prosLines = [];
+      var consLines = [];
+      for (var i = 0; i < lines.length; i++) {
+        var line = lines[i];
+        if (/^pros$/i.test(line)) { prosMode = true; consMode = false; continue; }
+        if (/^cons$/i.test(line)) { consMode = true; prosMode = false; continue; }
+        if (/^(advice|overall|helpful|\d+ found)/i.test(line)) { prosMode = false; consMode = false; }
+        if (prosMode) prosLines.push(line);
+        if (consMode) consLines.push(line);
+      }
+      pros = prosLines.join(" ").replace(/\s*Show more\s*$/i, "").trim();
+      cons = consLines.join(" ").replace(/\s*Show more\s*$/i, "").trim();
+
+      // Helpful count from last lines
+      for (var hi2 = lines.length - 1; hi2 >= 0; hi2--) {
+        var hm = lines[hi2].match(/^(\d+)\s+found helpful/i);
+        if (hm) { helpful = parseInt(hm[1], 10); break; }
+      }
 
       return { rating: rating, title: title, date: date, role: role, pros: pros, cons: cons, helpful: helpful };
     }
 
-    // Glassdoor review containers have id="empReview_<id>"
-    var reviewEls = document.querySelectorAll('[id^="empReview_"], [class*="empReview"], [data-test="review-container"]');
+    // 2025 Glassdoor reviews page: each review is an <article> element
+    var reviewEls = document.querySelectorAll('article');
+    if (reviewEls.length === 0) {
+      reviewEls = document.querySelectorAll('[id^="empReview_"], [class*="empReview"], [data-test="review-container"]');
+    }
 
-    var companyName = clean((document.querySelector('h1') || {}).innerText || document.title.replace(/\s*Reviews.*$/i, "").trim());
+    var companyName = clean((document.querySelector('h1') || {}).innerText || document.title.replace(/\s*Reviews.*$/i, "").trim()).replace(/\s+reviews$/i, "").trim();
     var data = {
       url: window.location.href,
       extractedAt: new Date().toISOString(),
