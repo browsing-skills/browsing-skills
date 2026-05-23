@@ -52,18 +52,63 @@ Use when the user wants info about a specific Instagram user (bio, follower coun
     var mode = (params && params.mode) || "data";
     var data = {};
 
-    // Attempt 1: parse profile JSON embedded in <script type="application/json">
-    var jsonScripts = document.querySelectorAll('script[type="application/json"]');
-    for (var si = 0; si < jsonScripts.length; si++) {
-      try {
-        var parsed = JSON.parse(jsonScripts[si].textContent);
-        // Walk the object tree looking for user data
-        var str = JSON.stringify(parsed);
-        if (str.indexOf('"username"') !== -1 && str.indexOf('"biography"') !== -1) {
-          // Try to find user node
+    // Primary: DOM extraction — more reliable than JSON (avoids embedded/cached profiles)
+    // username from URL path
+    data.username = window.location.pathname.replace(/\//g, '') || '';
+
+    // fullName — h1 or h2 in header (may match username if no display name set)
+    var nameEl = document.querySelector('header h1, header h2');
+    if (nameEl) data.fullName = nameEl.textContent.trim();
+
+    // stats + bio: parse header.innerText which has reliable format
+    // e.g. "username\n113 posts\n168 followers\n2,031 following\nBio text\n..."
+    var header = document.querySelector("header");
+    if (header) {
+      var headerText = header.innerText || "";
+      var postsM = headerText.match(/([\d,]+)\s+posts?/i);
+      var followersM = headerText.match(/([\d,.KkMm]+)\s+followers?/i);
+      var followingM = headerText.match(/([\d,.KkMm]+)\s+following/i);
+      if (postsM) data.postCount = parseInt(postsM[1].replace(/,/g,""), 10);
+      if (followersM) data.followers = followersM[1];
+      if (followingM) data.following = followingM[1];
+    }
+
+    // bio — any span in header that isn't a stat/username/button text
+    if (!data.bio && header) {
+      var spans = header.querySelectorAll("span");
+      for (var bi = 0; bi < spans.length; bi++) {
+        var s = spans[bi].textContent.trim();
+        if (spans[bi].childElementCount === 0 && s.length > 10 &&
+            s !== data.username && !/^\d[\d,.]*(k|m)?$/i.test(s) &&
+            !/^(posts?|followers?|following|follow|message|edit\s*profile)$/i.test(s)) {
+          data.bio = s; break;
+        }
+      }
+    }
+
+    // avatar
+    var avatarImg = document.querySelector('header img[alt*="profile picture"], header img[alt*="Profile"], main header img');
+    if (avatarImg) data.avatarUrl = avatarImg.src;
+
+    // verified
+    data.is_verified = document.querySelector('[aria-label="Verified"], [title="Verified"]') !== null;
+
+    // website
+    var linkEl = document.querySelector('header a[href^="http"]:not([href*="instagram.com"]), header a[rel="nofollow"]');
+    if (linkEl) data.website = linkEl.href || linkEl.textContent.trim();
+
+    // Fallback: enrich from JSON scripts if followers/postCount still missing
+    if (!data.followers || !data.postCount) {
+      var targetUsername = data.username.toLowerCase();
+      var jsonScripts = document.querySelectorAll('script[type="application/json"]');
+      for (var si = 0; si < jsonScripts.length; si++) {
+        try {
+          var str = jsonScripts[si].textContent;
+          if (str.indexOf('"' + targetUsername + '"') === -1) continue;
+          var parsed = JSON.parse(str);
           var findUser = function(obj) {
             if (!obj || typeof obj !== 'object') return null;
-            if (obj.username && obj.biography !== undefined) return obj;
+            if (obj.username && obj.username.toLowerCase() === targetUsername && obj.biography !== undefined) return obj;
             var keys = Object.keys(obj);
             for (var ki = 0; ki < keys.length; ki++) {
               var found = findUser(obj[keys[ki]]);
@@ -73,68 +118,15 @@ Use when the user wants info about a specific Instagram user (bio, follower coun
           };
           var user = findUser(parsed);
           if (user) {
-            data.username = user.username || '';
-            data.fullName = user.full_name || '';
-            data.bio = user.biography || '';
-            data.is_verified = user.is_verified || false;
-            data.website = user.external_url || '';
-            if (user.edge_followed_by) data.followers = user.edge_followed_by.count;
-            if (user.edge_follow) data.following = user.edge_follow.count;
-            if (user.edge_owner_to_timeline_media) data.postCount = user.edge_owner_to_timeline_media.count;
-            var pic = user.profile_pic_url_hd || user.profile_pic_url || '';
-            data.avatarUrl = pic;
+            if (!data.followers && user.edge_followed_by) data.followers = user.edge_followed_by.count;
+            if (!data.following && user.edge_follow) data.following = user.edge_follow.count;
+            if (!data.postCount && user.edge_owner_to_timeline_media) data.postCount = user.edge_owner_to_timeline_media.count;
+            if (!data.avatarUrl) data.avatarUrl = user.profile_pic_url_hd || user.profile_pic_url || '';
+            if (!data.bio && user.biography) data.bio = user.biography;
             break;
           }
-        }
-      } catch (e) { /* ignore */ }
-    }
-
-    // Attempt 2: Fallback — scrape visible DOM elements
-    if (!data.username) {
-      data.username = window.location.pathname.replace(/\//g, '') || '';
-    }
-
-    if (!data.fullName) {
-      var h1 = document.querySelector('header h1, header h2, main h1, main h2');
-      if (h1) data.fullName = h1.textContent.trim();
-    }
-
-    if (!data.bio) {
-      var bioEl = document.querySelector('header div[class] > span, header section > div span, main header span[class]');
-      if (bioEl) data.bio = bioEl.textContent.trim();
-    }
-
-    if (data.followers === undefined || data.followers === null) {
-      // Look for elements with aria-label containing "followers"
-      var allEls = document.querySelectorAll('a[href*="followers"], button, span');
-      for (var ei = 0; ei < allEls.length; ei++) {
-        var al = allEls[ei].getAttribute('aria-label') || allEls[ei].textContent || '';
-        var followersMatch = al.match(/([\d,]+)\s+[Ff]ollowers/);
-        if (followersMatch) { data.followers = followersMatch[1]; break; }
+        } catch (e) { /* ignore */ }
       }
-    }
-
-    if (data.following === undefined || data.following === null) {
-      var allEls2 = document.querySelectorAll('a[href*="following"], button, span');
-      for (var ei2 = 0; ei2 < allEls2.length; ei2++) {
-        var al2 = allEls2[ei2].getAttribute('aria-label') || allEls2[ei2].textContent || '';
-        var followingMatch = al2.match(/([\d,]+)\s+[Ff]ollowing/);
-        if (followingMatch) { data.following = followingMatch[1]; break; }
-      }
-    }
-
-    if (!data.avatarUrl) {
-      var avatarImg = document.querySelector('header img[alt*="profile picture"], header img[alt*="Profile"], main header img');
-      if (avatarImg) data.avatarUrl = avatarImg.src;
-    }
-
-    if (!data.is_verified) {
-      data.is_verified = document.querySelector('[aria-label="Verified"], [title="Verified"]') !== null;
-    }
-
-    if (!data.website) {
-      var linkEl = document.querySelector('header a[href^="http"]:not([href*="instagram.com"]), header a[rel="nofollow"]');
-      if (linkEl) data.website = linkEl.href || linkEl.textContent.trim();
     }
 
     if (mode === "display") {
