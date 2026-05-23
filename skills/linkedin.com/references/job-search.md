@@ -69,63 +69,70 @@ Use `mode: "display"` for self-contained HTML output.
     data.location = urlParams.get("location") || "";
     data.pageUrl = window.location.href;
 
-    // Total results count — look for the results heading
-    var resultsEl = document.querySelector(".jobs-search-results-list__subtitle, .results-context-header__job-count, [class*='results-context'] span");
-    if (resultsEl) {
-      var totalText = resultsEl.textContent.trim().replace(/,/g, "");
-      var totalMatch = totalText.match(/[\d]+/);
-      data.totalResults = totalMatch ? parseInt(totalMatch[0], 10) : null;
-    } else {
-      data.totalResults = null;
+    // Total results count — LinkedIn 2025 uses a <small> element with "N results"
+    data.totalResults = null;
+    var smalls = document.querySelectorAll("small");
+    for (var sm = 0; sm < smalls.length; sm++) {
+      var smTxt = smalls[sm].textContent.trim();
+      if (/\d+.*result/i.test(smTxt)) {
+        var tm = smTxt.match(/(\d[\d,]*)/);
+        if (tm) { data.totalResults = parseInt(tm[1].replace(/,/g, ""), 10); break; }
+      }
     }
 
-    // Job cards — two common list selectors for logged-in vs public views
-    var cardEls = document.querySelectorAll(".jobs-search__results-list li, .scaffold-layout__list-container li, .jobs-search-results__list li");
+    // Job cards — LinkedIn 2025 uses li[data-occludable-job-id] as the stable anchor.
+    // All class names are obfuscated; innerText line parsing is the reliable approach.
+    //
+    // Line structure per card:
+    //   [0] job title (may end with " with verification" — strip it)
+    //   next non-skip lines: company, then location
+    //   skip lines: "with verification", "X connections work here",
+    //               "X school alum(ni) work here", "Viewed", "Promoted", "Followed"
+    //   "Easy Apply" anywhere in lines → isEasyApply = true
+    //   time pattern ("1 week ago", "2 days ago") → datePosted
+
+    var isSkipLine = function(l) {
+      return /connections? work(s)? here|school alum|alumni work|^Viewed$|^Promoted$|^Followed$/i.test(l) ||
+             /with verification$/i.test(l);
+    };
+    var isDateLine = function(l) {
+      return /\b(\d+\s*(hour|day|week|month)s? ago|just now)\b/i.test(l);
+    };
+
+    var cardEls = document.querySelectorAll("li[data-occludable-job-id]");
     var jobs = [];
 
-    for (var i = 0; i < Math.min(cardEls.length, limit); i++) {
+    for (var i = 0; i < cardEls.length && jobs.length < limit; i++) {
       var card = cardEls[i];
+      var jobId = card.getAttribute("data-occludable-job-id") || "";
+      var lines = card.innerText ? card.innerText.split("\n").map(function(l) { return l.trim(); }).filter(Boolean) : [];
+      if (lines.length === 0) continue;
+
       var job = {};
+      job.jobId = jobId;
+      job.jobUrl = jobId ? "https://www.linkedin.com/jobs/view/" + jobId + "/" : "";
 
-      // Title
-      var titleEl = card.querySelector("h3.base-search-card__title, a.base-card__full-link, h3.job-card-list__title, .job-card-container__link");
-      if (titleEl) {
-        job.title = titleEl.textContent.trim();
+      // Title: first line, strip trailing "with verification"
+      job.title = lines[0].replace(/\s+with verification$/i, "").trim();
+
+      // Company + location: walk lines, skip noise
+      var nonSkip = [];
+      for (var li = 1; li < lines.length; li++) {
+        if (!isSkipLine(lines[li])) nonSkip.push(lines[li]);
+      }
+      job.company = nonSkip[0] || "";
+      job.location = nonSkip[1] || "";
+
+      // Date posted
+      job.datePosted = "";
+      for (var dl = 0; dl < lines.length; dl++) {
+        if (isDateLine(lines[dl])) { job.datePosted = lines[dl]; break; }
       }
 
-      // Job URL
-      var linkEl = card.querySelector("a.base-card__full-link, a.job-card-list__title, a.job-card-container__link");
-      if (linkEl && linkEl.href) {
-        job.jobUrl = linkEl.href.split("?")[0];
-      }
+      // Easy Apply
+      job.isEasyApply = lines.some(function(l) { return /^Easy Apply$/i.test(l); });
 
-      // Company
-      var companyEl = card.querySelector("h4.base-search-card__subtitle a, h4.base-search-card__subtitle, .job-card-container__company-name, .artdeco-entity-lockup__subtitle");
-      if (companyEl) {
-        job.company = companyEl.textContent.trim();
-      }
-
-      // Location
-      var locationEl = card.querySelector(".job-search-card__location, .base-search-card__metadata, .job-card-container__metadata-item");
-      if (locationEl) {
-        job.location = locationEl.textContent.trim();
-      }
-
-      // Date posted — prefer datetime attribute from <time>
-      var timeEl = card.querySelector(".job-search-card__listdate, time[datetime], time");
-      if (timeEl) {
-        job.datePosted = timeEl.getAttribute("datetime") || timeEl.textContent.trim();
-      }
-
-      // Easy Apply flag
-      var cardText = card.textContent || "";
-      var easyApplyBtn = card.querySelector(".jobs-apply-button--top-card, [aria-label*='Easy Apply'], [class*='easy-apply']");
-      job.isEasyApply = !!(easyApplyBtn || cardText.toLowerCase().indexOf("easy apply") !== -1);
-
-      // Only push cards that have at least a title or URL
-      if (job.title || job.jobUrl) {
-        jobs.push(job);
-      }
+      jobs.push(job);
     }
 
     data.jobs = jobs;
@@ -158,7 +165,7 @@ Use `mode: "display"` for self-contained HTML output.
 
 **Returns:** `{ query, location, pageUrl, totalResults, jobs: [{ title, company, location, datePosted, jobUrl, isEasyApply }] }`
 
-**Notes:** LinkedIn uses two different list structures depending on whether the user is authenticated. Both selectors are tried. Job URLs are stripped of tracking parameters. Easy Apply detection checks for both a dedicated button element and the presence of the "Easy Apply" text in the card. Scroll the page before executing to load more results.
+**Notes:** LinkedIn 2025 uses `li[data-occludable-job-id]` as the stable job card anchor — all class names are obfuscated hashes. Extraction uses `innerText` line parsing: first line = title, then company and location parsed from subsequent non-noise lines (skipping "with verification", "X connections work here", "Promoted", etc.). Cards that haven't scrolled into view may have empty `innerText` (occluded) and are skipped. Navigate to `/jobs/search/?keywords=...&location=...` and scroll before executing to load more results.
 
 ---
 
