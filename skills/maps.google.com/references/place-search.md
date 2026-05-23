@@ -73,44 +73,44 @@ Use when the user wants to search Google Maps for a type of place or business (e
 
       if (!place.name) continue;
 
-      // Rating — class MW4etd
-      var ratingEl = card.querySelector('.MW4etd, [class*="MW4etd"]');
-      place.rating = ratingEl ? ratingEl.textContent.trim() : null;
+      // The anchor element itself is empty — all data lives in the grandparent container
+      var container = card.parentElement ? card.parentElement.parentElement : card;
 
-      // Review count — class UY7F9 (usually in parentheses)
-      var reviewEl = card.querySelector('.UY7F9, [class*="UY7F9"]');
-      if (reviewEl) {
-        place.reviewCount = reviewEl.textContent.trim().replace(/[()]/g, '');
-      } else {
-        // Try aria-label pattern "X reviews"
-        var reviewMatch = ariaLabel.match(/([\d,]+)\s+review/i);
-        place.reviewCount = reviewMatch ? reviewMatch[1] : null;
+      // Parse container innerText: format is typically
+      // "Name\n4.8(571) · $1–10\nCategory · · Address\nOpen/Closed · Hours\n..."
+      var containerText = container ? (container.innerText || container.textContent || "") : "";
+      var clines = containerText.split("\n").map(function(l) { return l.trim(); }).filter(Boolean);
+
+      // Rating + review count — look for line matching "4.8(571)"
+      var ratingLine = null;
+      for (var ri = 0; ri < clines.length; ri++) {
+        if (/^\d+\.\d+\([\d,]+\)/.test(clines[ri])) { ratingLine = clines[ri]; break; }
+      }
+      if (ratingLine) {
+        var rm = ratingLine.match(/^(\d+\.\d+)\(([\d,]+)\)/);
+        if (rm) { place.rating = rm[1]; place.reviewCount = rm[2]; }
       }
 
-      // Category — class W4Etjb
-      var catEl = card.querySelector('.W4Etjb, [class*="W4Etjb"]');
-      place.category = catEl ? catEl.textContent.trim() : null;
-
-      // Address — look for text that looks like a street address (has a number or common address words)
-      var allDivs = card.querySelectorAll('div[class]');
-      for (var di = 0; di < allDivs.length; di++) {
-        var txt = allDivs[di].textContent.trim();
-        if (!place.address && txt && txt !== place.name && txt !== place.category && txt.length > 5) {
-          // Heuristic: contains a digit (street number) or common address keyword
-          if (/\d/.test(txt) && txt.length < 80 && allDivs[di].children.length === 0) {
-            place.address = txt;
-          }
+      // Category and address — in a line like "Coffee shop · · 1737 Balboa St"
+      var infoLine = null;
+      for (var ii = 0; ii < clines.length; ii++) {
+        if (clines[ii].indexOf("·") > -1 && clines[ii] !== ratingLine) { infoLine = clines[ii]; break; }
+      }
+      if (infoLine) {
+        var parts = infoLine.split("·").map(function(p) { return p.trim(); }).filter(Boolean);
+        if (parts.length > 0) place.category = parts[0];
+        // Address is typically the last non-empty part that has a number
+        for (var pi = parts.length - 1; pi >= 0; pi--) {
+          if (/\d/.test(parts[pi]) && parts[pi].length > 5) { place.address = parts[pi]; break; }
         }
       }
 
       // Open/closed status
-      var openEl = card.querySelector('[class*="fontBodyMedium"] span, [class*="open"], [class*="closed"]');
-      var openText = openEl ? openEl.textContent.trim() : '';
-      if (/open|closed|hours/i.test(openText)) {
-        place.openStatus = openText;
-      } else {
-        place.openStatus = null;
+      var openStatus = null;
+      for (var oi = 0; oi < clines.length; oi++) {
+        if (/^(open|closed|closes|opens)/i.test(clines[oi])) { openStatus = clines[oi]; break; }
       }
+      place.openStatus = openStatus;
 
       // Deduplicate by URL
       var seen = false;
@@ -120,7 +120,14 @@ Use when the user wants to search Google Maps for a type of place or business (e
       if (!seen) places.push(place);
     }
 
-    var query = decodeURIComponent(window.location.pathname.replace('/maps/search/', '').replace(/\//g, '').replace(/\+/g, ' '));
+    // Extract clean query: try search input first, then pathname (strip coords after @)
+    var searchInput = document.querySelector('input#searchboxinput');
+    var query = searchInput ? searchInput.value : "";
+    if (!query) {
+      var pathQuery = window.location.pathname.replace('/maps/search/', '').replace(/\//g, '');
+      pathQuery = pathQuery.split('@')[0]; // strip coordinates
+      query = decodeURIComponent(pathQuery.replace(/\+/g, ' '));
+    }
     var result = { query: query, places: places, totalVisible: places.length };
 
     if (mode === "display") {
