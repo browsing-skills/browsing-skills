@@ -49,14 +49,18 @@ Use when the user has a specific Google Maps place URL or wants full details abo
     var h1 = document.querySelector('h1');
     data.name = h1 ? h1.textContent.trim() : '';
 
-    // Rating — look for aria-label containing "stars" or a span with numeric rating
-    var ratingEl = document.querySelector('[aria-label*="stars"], [aria-label*="star"]');
-    if (ratingEl) {
-      var ratingMatch = (ratingEl.getAttribute('aria-label') || '').match(/([\d.]+)\s+star/i);
-      data.rating = ratingMatch ? ratingMatch[1] : ratingEl.textContent.trim();
+    // Rating — 2025 Maps: .fontDisplayLarge is the most reliable; aria-label has " stars" but no number
+    var ratingSpan = document.querySelector('.fontDisplayLarge, [class*="fontDisplayLarge"]');
+    if (ratingSpan && /^\d+\.?\d*$/.test(ratingSpan.textContent.trim())) {
+      data.rating = ratingSpan.textContent.trim();
     } else {
-      var ratingSpan = document.querySelector('.fontDisplayLarge, [class*="fontDisplayLarge"]');
-      data.rating = ratingSpan ? ratingSpan.textContent.trim() : null;
+      var ratingEl = document.querySelector('[aria-label*="stars"], [aria-label*="star"]');
+      if (ratingEl) {
+        var ratingMatch = (ratingEl.getAttribute('aria-label') || '').match(/([\d.]+)\s+star/i);
+        data.rating = ratingMatch ? ratingMatch[1] : (ratingEl.textContent.trim() || null);
+      } else {
+        data.rating = null;
+      }
     }
 
     // Review count
@@ -114,15 +118,20 @@ Use when the user has a specific Google Maps place URL or wants full details abo
       data.website = null;
     }
 
-    // Hours — look for aria-label containing "Hours" or a table/list with hour rows
+    // Hours — 2025 Maps: "Open · Closes X pm" or "Closed · Opens X am" appears in body text
     var hoursEl = document.querySelector('[aria-label*="Hours"], [aria-expanded][class*="hour"]');
     if (hoursEl) {
       var hoursLabel = hoursEl.getAttribute('aria-label') || '';
       data.hours = hoursLabel.replace(/^Hours:\s*/i, '').trim() || hoursEl.textContent.trim();
-    } else {
-      // Try to find an open/closed indicator
-      var openEl = document.querySelector('[class*="open"], [class*="closed"], span[aria-label*="open"], span[aria-label*="closed"]');
-      data.hours = openEl ? openEl.textContent.trim() : null;
+    }
+    if (!data.hours || data.hours === "Hours") {
+      var bodyText2 = document.body.innerText || "";
+      var openMatch = bodyText2.match(/(Open|Closed)\s*[·•]\s*(Closes|Opens|Open all day|Closed temporar[a-z]*)[\s\S]{0,20}/);
+      if (openMatch) data.hours = openMatch[0].split("\n")[0].replace(/[-]/g, "").trim();
+      if (!data.hours) {
+        var openEl = document.querySelector('[class*="open"], [class*="closed"], span[aria-label*="open"], span[aria-label*="closed"]');
+        data.hours = openEl ? openEl.textContent.trim() : null;
+      }
     }
 
     // Hours schedule — try to find the expanded hours table
