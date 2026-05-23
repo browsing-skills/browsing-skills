@@ -54,112 +54,88 @@ Use `mode: "display"` for self-contained HTML output.
     var mode = (params && params.mode) || "data";
     var data = {};
 
-    // Name — single h1 on profile pages
-    var h1 = document.querySelector("h1");
-    if (h1) data.name = h1.textContent.trim();
-
-    // Headline — tagline below the name
-    var headlineEl = document.querySelector(".text-body-medium.break-words");
-    if (headlineEl) data.headline = headlineEl.textContent.trim();
-
-    // Location
-    var locationEl = document.querySelector(".text-body-small.inline.t-black--light.break-words");
-    if (locationEl) data.location = locationEl.textContent.trim();
-
-    // Profile URL (canonical, no query string)
     data.profileUrl = window.location.href.split("?")[0];
 
-    // Avatar
-    var avatarEl = document.querySelector("img.pv-top-card-profile-picture__image, .profile-photo-edit__preview img, img.profile-photo-edit__preview");
-    if (avatarEl) data.avatarUrl = avatarEl.src || "";
-
-    // Connections / followers — look for text near the top card
-    var connectionEls = document.querySelectorAll(".pv-top-card--list-bullet li, .pvs-header__subtitle span, [class*='connection'] span, [class*='follower'] span");
-    for (var ci = 0; ci < connectionEls.length; ci++) {
-      var ctxt = connectionEls[ci].textContent.trim().toLowerCase();
-      if (ctxt.indexOf("connection") !== -1 || ctxt.indexOf("follower") !== -1) {
-        data.connectionsCount = connectionEls[ci].textContent.trim();
-        break;
+    // LinkedIn 2025 uses h2 (not h1) with fully obfuscated class names.
+    // Find the profile card h2 by skipping the nav notification count h2.
+    var h2els = document.querySelectorAll("h2");
+    var nameH2 = null;
+    for (var i = 0; i < h2els.length; i++) {
+      var txt = h2els[i].textContent.trim();
+      if (/notification/i.test(txt) || /^\d+$/.test(txt)) continue;
+      if (h2els[i].closest("section")) { nameH2 = h2els[i]; break; }
+    }
+    if (nameH2) {
+      var sec = nameH2.closest("section");
+      var secLines = sec.innerText.split("\n").map(function(l) { return l.trim(); }).filter(function(l) { return l && l !== "·" && l !== "•"; });
+      data.name = secLines[0] || "";
+      data.headline = secLines[2] || "";
+      data.location = secLines[3] || "";
+      var connIdx = -1;
+      for (var ci = 0; ci < secLines.length; ci++) {
+        if (/^connections?$/i.test(secLines[ci])) { connIdx = ci; break; }
       }
+      if (connIdx > 0) data.connectionsCount = secLines[connIdx - 1] + " connections";
+      var skipWords = /^(Contact info|Connect|Message|Follow|More)$/i;
+      var mid = secLines.slice(4, connIdx > 0 ? connIdx - 1 : secLines.length);
+      var keyMids = mid.filter(function(l) { return !skipWords.test(l) && l.length > 1; });
+      data.company = keyMids[0] || "";
+      data.topEducation = keyMids[1] || "";
     }
 
-    // About section — visually-hidden span inside #about sibling container
-    var aboutSection = document.getElementById("about");
-    if (aboutSection) {
-      var aboutContainer = aboutSection.nextElementSibling;
-      while (aboutContainer) {
-        var hiddenEl = aboutContainer.querySelector(".visually-hidden");
-        if (hiddenEl) {
-          var hiddenText = hiddenEl.textContent.trim();
-          if (hiddenText.length > 0) {
-            data.about = hiddenText;
-            break;
-          }
-        }
-        // Also try plain text content of the div
-        var plainText = aboutContainer.textContent.trim();
-        if (plainText.length > 20) {
-          data.about = plainText;
-          break;
-        }
-        aboutContainer = aboutContainer.nextElementSibling;
+    // Section IDs (#about, #experience, etc.) were removed in LinkedIn 2025.
+    // Parse sections from document.body.innerText using heading markers instead.
+    var pageText = document.body.innerText;
+    function extractSectionLines(startLabel, endLabels, limit) {
+      var startMarker = "\n" + startLabel + "\n";
+      var startIdx = pageText.indexOf(startMarker);
+      if (startIdx === -1) return [];
+      var cStart = startIdx + startMarker.length;
+      var cEnd = pageText.length;
+      for (var ei = 0; ei < endLabels.length; ei++) {
+        var eIdx = pageText.indexOf("\n" + endLabels[ei] + "\n", cStart);
+        if (eIdx > -1 && eIdx < cEnd) cEnd = eIdx;
       }
+      return pageText.slice(cStart, cEnd).trim().split("\n").map(function(l) { return l.trim(); }).filter(function(l) {
+        return l && !l.startsWith("•") && !l.startsWith("…") && !l.startsWith("-") && !l.endsWith(":") && l.indexOf("\t") === -1;
+      }).slice(0, limit || 999);
     }
 
-    // Helper: extract items from a section by its anchor id
-    function extractSectionItems(sectionId, limit) {
-      var anchor = document.getElementById(sectionId);
-      if (!anchor) return [];
-      var items = [];
-      var container = anchor.nextElementSibling;
-      while (container) {
-        var listItems = container.querySelectorAll(".pvs-list__item--line-separated, .artdeco-list__item");
-        if (listItems.length > 0) {
-          for (var li = 0; li < Math.min(listItems.length, limit || 3); li++) {
-            var item = listItems[li];
-            var titleEl = item.querySelector(".mr1.t-bold span[aria-hidden], .mr1.t-bold span");
-            var subtitleEl = item.querySelector(".t-14.t-normal span[aria-hidden], .t-14.t-normal span");
-            var metaEl = item.querySelector(".t-14.t-black--light span[aria-hidden], .t-14.t-black--light span");
-            items.push({
-              title: titleEl ? titleEl.textContent.trim() : "",
-              company: subtitleEl ? subtitleEl.textContent.trim() : "",
-              duration: metaEl ? metaEl.textContent.trim() : ""
-            });
-          }
-          break;
-        }
-        container = container.nextElementSibling;
-      }
-      return items;
+    var aboutLines = extractSectionLines("About", ["Experience", "Education", "Skills", "Activity"], 10);
+    for (var ab = 0; ab < aboutLines.length; ab++) {
+      if (aboutLines[ab].length > 30) { data.about = aboutLines[ab].slice(0, 200); break; }
     }
 
-    // Experience
-    data.experience = extractSectionItems("experience", 3);
-
-    // Education
-    var eduItems = extractSectionItems("education", 3);
-    data.education = eduItems.map(function(item) {
-      return { school: item.title, degree: item.company, duration: item.duration };
-    });
-
-    // Skills — top visible skill pills/items
-    var skillsAnchor = document.getElementById("skills");
-    var skills = [];
-    if (skillsAnchor) {
-      var skillsContainer = skillsAnchor.nextElementSibling;
-      while (skillsContainer) {
-        var skillItems = skillsContainer.querySelectorAll(".pvs-list__item--line-separated, .artdeco-list__item");
-        if (skillItems.length > 0) {
-          for (var si = 0; si < Math.min(skillItems.length, 10); si++) {
-            var skillTitleEl = skillItems[si].querySelector(".mr1.t-bold span[aria-hidden], .mr1.t-bold span");
-            if (skillTitleEl) skills.push(skillTitleEl.textContent.trim());
-          }
-          break;
-        }
-        skillsContainer = skillsContainer.nextElementSibling;
-      }
+    var isDuration = function(s) { return /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|\d{4}|Present)/i.test(s); };
+    var expLines = extractSectionLines("Experience", ["Education", "Skills", "Courses", "Licenses"], 40);
+    data.experience = [];
+    var expI = 0;
+    while (expI < expLines.length && data.experience.length < 3) {
+      var t = expLines[expI] || "", m = expLines[expI + 1] || "", d = expLines[expI + 2] || "";
+      if (t && !isDuration(t) && isDuration(d)) {
+        var parts = m.split("·");
+        data.experience.push({ title: t, company: (parts[0] || "").trim(), type: (parts[1] || "").trim(), duration: d });
+        expI += 3;
+      } else { expI++; }
     }
-    data.skills = skills;
+
+    var isSchoolLine = function(s) { return s && s.length > 5 && /[A-Z]/.test(s) && !s.toLowerCase().includes("skills") && !s.startsWith("http"); };
+    var eduLines = extractSectionLines("Education", ["Skills", "Experience", "Courses", "Volunteer"], 20);
+    data.education = [];
+    var eduI = 0;
+    while (eduI < eduLines.length && data.education.length < 3) {
+      var s = eduLines[eduI] || "", deg = eduLines[eduI + 1] || "", yr = eduLines[eduI + 2] || "";
+      if (isSchoolLine(s)) {
+        data.education.push({ school: s, degree: isSchoolLine(deg) && !/^\d/.test(deg) ? deg : "", years: /\d{4}/.test(yr) ? yr : "" });
+        eduI += 3;
+      } else { eduI++; }
+    }
+
+    var avatarSelectors = ["img.pv-top-card-profile-picture__image", "img.profile-photo-edit__preview", "button[aria-label*='photo'] img", "img[alt*='profile' i]"];
+    for (var ai = 0; ai < avatarSelectors.length; ai++) {
+      var aEl = document.querySelector(avatarSelectors[ai]);
+      if (aEl && aEl.src && aEl.src.indexOf("data:") === -1) { data.avatarUrl = aEl.src; break; }
+    }
 
     if (mode === "display") {
       var h = "<div style=\"font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#0f0f0f;color:#e0e0e0;padding:24px;max-width:640px;margin:0 auto;border-radius:12px;\">";
@@ -172,12 +148,18 @@ Use `mode: "display"` for self-contained HTML output.
       if (data.experience && data.experience.length) {
         h += "<div style=\"margin-top:16px;\"><strong>Experience</strong><ul style=\"margin:8px 0;padding-left:20px;\">";
         for (var ei = 0; ei < data.experience.length; ei++) {
-          h += "<li style=\"margin-bottom:6px;font-size:13px;\">" + (data.experience[ei].title || "") + " at " + (data.experience[ei].company || "") + (data.experience[ei].duration ? " · " + data.experience[ei].duration : "") + "</li>";
+          var exp = data.experience[ei];
+          h += "<li style=\"margin-bottom:6px;font-size:13px;\"><strong>" + (exp.title || "") + "</strong> at " + (exp.company || "") + (exp.duration ? " · " + exp.duration : "") + "</li>";
         }
         h += "</ul></div>";
       }
-      if (data.skills && data.skills.length) {
-        h += "<div style=\"margin-top:12px;\"><strong>Skills:</strong> <span style=\"color:#aaa;font-size:13px;\">" + data.skills.join(", ") + "</span></div>";
+      if (data.education && data.education.length) {
+        h += "<div style=\"margin-top:12px;\"><strong>Education</strong><ul style=\"margin:8px 0;padding-left:20px;\">";
+        for (var di = 0; di < data.education.length; di++) {
+          var edu = data.education[di];
+          h += "<li style=\"font-size:13px;\">" + (edu.school || "") + (edu.degree ? " — " + edu.degree : "") + (edu.years ? " · " + edu.years : "") + "</li>";
+        }
+        h += "</ul></div>";
       }
       h += "</div>";
       return { content: [{ type: "text", text: h }] };
@@ -190,7 +172,7 @@ Use `mode: "display"` for self-contained HTML output.
 
 **Returns:** `{ name, headline, location, profileUrl, avatarUrl, connectionsCount, about, experience, education, skills }`
 
-**Notes:** Primary extraction anchors on stable element types (`h1`, section ids `#about`, `#experience`, `#education`, `#skills`) with class-based fallbacks. LinkedIn uses obfuscated class names that can change; the id anchors are more stable. Requires `li_at` cookie and a real browser. Without auth, most fields will be empty or missing.
+**Notes:** LinkedIn 2025 uses `h2` (not `h1`) for the profile name and fully obfuscated class names — no readable CSS selectors survive. Section id anchors (`#experience`, `#education`, etc.) were also removed. This action uses `h2.closest("section")` for the top card and `document.body.innerText` line-parsing for experience/education sections. Verified against live sessions via Chrome Bridge. Requires `li_at` cookie and a real browser.
 
 ---
 
