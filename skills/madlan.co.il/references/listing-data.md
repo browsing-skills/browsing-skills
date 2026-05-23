@@ -63,44 +63,51 @@ Use when the user wants the full details of a specific Madlan property listing.
     var data = {};
     data.listingUrl = window.location.href.split("?")[0];
 
-    // Price — look for ₪ in prominent elements
-    data.price = getTestId("price") || getTestId("listing-price") || "";
-    if (!data.price) {
-      var priceEls = document.querySelectorAll('[class*="price"], [class*="Price"]');
-      for (var pi = 0; pi < priceEls.length; pi++) {
-        var pt = priceEls[pi].textContent.trim();
-        if (pt.indexOf("₪") > -1 && priceEls[pi].childElementCount === 0) {
-          data.price = pt;
-          break;
-        }
-      }
-    }
-
-    // Address
-    data.address = getTestId("address") || getTestId("street-address") || getText("h1") || "";
-
     // Full page text for Hebrew field parsing
     var bodyText = document.body.innerText || document.body.textContent || "";
     var lines = bodyText.split(/\n/).map(function(l) { return l.trim(); }).filter(Boolean);
 
-    // Hebrew field extraction helper
-    var findAfterLabel = function(label) {
-      for (var i = 0; i < lines.length; i++) {
+    // Madlan 2025 listing page: value appears BEFORE its label (e.g. "4\nחדרים\n501\nמ״ר")
+    var findBeforeLabel = function(label) {
+      for (var i = 1; i < lines.length; i++) {
         if (lines[i].indexOf(label) > -1) {
-          // value may be same line or next line
+          // same-line value (unlikely but check)
           var same = lines[i].replace(label, "").replace(/[:：]/, "").trim();
           if (same) return same;
-          if (lines[i + 1]) return lines[i + 1].trim();
+          return lines[i - 1].trim();
         }
       }
       return "";
     };
 
-    data.rooms = getTestId("rooms") || findAfterLabel("חדרים") || findAfterLabel("חדר");
-    data.floor = getTestId("floor") || findAfterLabel("קומה");
-    data.totalFloors = findAfterLabel("קומות");
-    data.sizeSqm = getTestId("size") || findAfterLabel('מ"ר') || findAfterLabel("מ״ר") || findAfterLabel("שטח");
-    data.propertyType = getTestId("property-type") || findAfterLabel("סוג הנכס") || findAfterLabel("סוג נכס");
+    // Price — first line containing ₪ in page text; also try DOM class selectors
+    data.price = "";
+    for (var pi2 = 0; pi2 < lines.length; pi2++) {
+      if (lines[pi2].indexOf("₪") > -1) { data.price = lines[pi2]; break; }
+    }
+    if (!data.price) {
+      var priceEls = document.querySelectorAll('[class*="price"], [class*="Price"]');
+      for (var pi = 0; pi < priceEls.length; pi++) {
+        var pt = priceEls[pi].textContent.trim();
+        if (pt.indexOf("₪") > -1 && priceEls[pi].childElementCount === 0) { data.price = pt; break; }
+      }
+    }
+
+    // Address — look for line that contains a comma and Hebrew city names
+    data.address = "";
+    for (var ai2 = 0; ai2 < lines.length; ai2++) {
+      var al = lines[ai2];
+      if (al.indexOf(",") > -1 && al.length > 10 && al.indexOf("₪") === -1 && /[֐-׿]/.test(al)) {
+        data.address = al; break;
+      }
+    }
+    if (!data.address) data.address = getText("h1") || "";
+
+    data.rooms = findBeforeLabel("חדרים") || findBeforeLabel("חדר");
+    data.floor = findBeforeLabel("קומה");
+    data.totalFloors = findBeforeLabel("קומות");
+    data.sizeSqm = findBeforeLabel("מ״ר") || findBeforeLabel('מ"ר') || findBeforeLabel("מ״ר") || findBeforeLabel("שטח");
+    data.propertyType = getTestId("property-type") || findBeforeLabel("סוג הנכס") || findBeforeLabel("סוג נכס") || findBeforeLabel("למכירה") || "";
 
     // Description — try data-testid, then class, then largest text block
     data.description = getTestId("description") || getTestId("listing-description") || getText('[class*="description"], [class*="Description"]');
