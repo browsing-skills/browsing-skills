@@ -29,8 +29,8 @@ Use when the user wants aggregate rating data, category breakdowns, pricing, or 
 
 Examples:
 
-- `https://www.capterra.com/p/67095/Slack/`
-- `https://www.capterra.com/p/232666/Notion/`
+- `https://www.capterra.com/p/147657/monday-com/`
+- `https://www.capterra.com/p/186596/Notion/`
 
 **Code:**
 
@@ -116,28 +116,61 @@ Examples:
                     textOf('[class*="description"] p') || "";
     }
 
-    // Category breakdowns: ease of use, customer service, features, value
+    // Shared body lines for innerText-based extraction
+    var bodyLines = (document.body.innerText || "").split("\n").map(clean).filter(Boolean);
+
+    // Category breakdowns: Capterra 2025 comparison widget renders the current product's value
+    // BEFORE the category label (value-before-label pattern), e.g.:
+    //   "4.4 (2736)\nEase Of Use\n4.5 (5986)" → Ease Of Use: 4.4
     var breakdowns = {};
-    var breakdownLabels = ["ease of use", "customer service", "features", "value for money", "value", "functionality"];
-    var ratingItems = document.querySelectorAll('[data-testid*="rating-item"], [class*="rating-breakdown"] [class*="item"], [class*="category-rating"], [class*="sub-rating"]');
-    for (var ri = 0; ri < ratingItems.length; ri++) {
-      var itemText = clean(ratingItems[ri].innerText || ratingItems[ri].textContent);
-      for (var li = 0; li < breakdownLabels.length; li++) {
-        if (itemText.toLowerCase().indexOf(breakdownLabels[li]) !== -1) {
-          var scoreMatch = itemText.match(/(\d+(?:\.\d+)?)\s*(?:\/\s*5)?/);
-          if (scoreMatch) {
-            var key = breakdownLabels[li].replace(/\s+/g, "_");
-            breakdowns[key] = parseFloat(scoreMatch[1]);
-          }
-          break;
+    var catKeys = {
+      "ease of use": "ease_of_use",
+      "customer service": "customer_service",
+      "value for money": "value_for_money",
+      "functionality": "functionality"
+    };
+    for (var bli = 1; bli < bodyLines.length; bli++) {
+      var bll = bodyLines[bli].toLowerCase();
+      if (catKeys[bll]) {
+        var prevLine = bodyLines[bli - 1];
+        var bm = prevLine.match(/^(\d+\.\d+)/);
+        if (bm && !breakdowns[catKeys[bll]]) {
+          breakdowns[catKeys[bll]] = parseFloat(bm[1]);
         }
       }
     }
 
-    // Pricing
-    var pricing = textOf('[data-testid*="pricing"]') ||
-                  textOf('[class*="pricing-info"]') ||
-                  textOf('[class*="price"]') || "";
+    // Pricing: find the product's starting price from the hero comparison widget.
+    // The widget renders: [competitor $price]\n[Per ...]\nStarting Price\n[$product price]\n[Per ...]
+    // So we look for "Starting Price" whose PREVIOUS line starts with "Per" (the competitor's price unit),
+    // then take the next $ line as the current product's starting price.
+    var pricing = "";
+    for (var pli = 0; pli < bodyLines.length; pli++) {
+      if (/^starting price$/i.test(bodyLines[pli])) {
+        var prevl = bodyLines[pli - 1] || "";
+        if (/^per\b/i.test(prevl) || /^\$/.test(prevl)) {
+          for (var pni = pli + 1; pni < Math.min(pli + 4, bodyLines.length); pni++) {
+            if (/^\$/.test(bodyLines[pni])) {
+              pricing = bodyLines[pni];
+              if (bodyLines[pni + 1] && /^per/i.test(bodyLines[pni + 1])) {
+                pricing += " " + bodyLines[pni + 1];
+              }
+              break;
+            }
+          }
+          if (pricing) break;
+        }
+      }
+    }
+    // Fallback: grab a few lines from the standalone Pricing section (skip the nav tab occurrence)
+    if (!pricing) {
+      for (var fli = 0; fli < bodyLines.length; fli++) {
+        if (bodyLines[fli] === "Pricing" && bodyLines[fli + 1] !== "Integrations") {
+          pricing = bodyLines.slice(fli + 1, fli + 4).join(", ");
+          break;
+        }
+      }
+    }
 
     var data = {
       url: window.location.href,

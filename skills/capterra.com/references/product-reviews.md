@@ -29,8 +29,8 @@ Use when the user wants individual review content from a Capterra product page.
 
 Examples:
 
-- `https://www.capterra.com/p/67095/Slack/reviews/`
-- `https://www.capterra.com/p/232666/Notion/reviews/`
+- `https://www.capterra.com/p/147657/monday-com/reviews/`
+- `https://www.capterra.com/p/186596/Notion/reviews/`
 
 **Code:**
 
@@ -59,123 +59,90 @@ Examples:
       return found ? clean(found.innerText || found.textContent) : "";
     }
 
-    // Find review card containers
-    var reviewEls = document.querySelectorAll('[data-testid="review-card"]');
-    if (reviewEls.length === 0) reviewEls = document.querySelectorAll('.review-card');
-    if (reviewEls.length === 0) reviewEls = document.querySelectorAll('article[class*="review"], [class*="ReviewCard"], [class*="review-item"]');
-    if (reviewEls.length === 0) {
-      // Broader fallback: articles on a reviews page
-      reviewEls = document.querySelectorAll('article');
+    // Capterra 2025: no review-card containers — use innerText line parsing.
+    // Review structure in body text:
+    //   [Name]\n[Role]\n[Industry]\nUsed the software for: X\n"[Title]"\n[Date]\n[Rating]\n[overall]\nPros\n[pros]\nCons\n[cons]\nReview Source
+    var bodyLines = (document.body.innerText || "").split("\n").map(clean).filter(Boolean);
+
+    // Skip to the full-review section (after "Showing X-Y of Z Reviews")
+    var mainStart = 0;
+    for (var si = 0; si < bodyLines.length; si++) {
+      if (/^Showing \d+-\d+ of [\d,]+ Reviews?/i.test(bodyLines[si])) {
+        mainStart = si + 1;
+        break;
+      }
     }
 
     var reviews = [];
-    for (var i = 0; i < reviewEls.length && reviews.length < limit; i++) {
-      var el = reviewEls[i];
-      var elText = clean(el.innerText || el.textContent);
-      // Skip if element has no meaningful review content
-      if (elText.length < 50) continue;
+    var ri = mainStart;
+    while (ri < bodyLines.length && reviews.length < limit) {
+      if (!/^Used the software for:/i.test(bodyLines[ri])) { ri++; continue; }
 
-      // Reviewer name
-      var reviewer = textOf(el, '[data-testid*="reviewer-name"], [class*="reviewer-name"]') ||
-                     textOf(el, '[class*="author"] [class*="name"]') ||
-                     textOf(el, '[class*="author"]') || "";
+      // Reviewer metadata (3 lines before "Used the software for:")
+      var reviewer = ri >= 3 ? bodyLines[ri - 3] : "";
+      var role     = ri >= 2 ? bodyLines[ri - 2] : "";
+      var companyInfo = ri >= 1 ? bodyLines[ri - 1] : "";
+      var usageDuration = bodyLines[ri].replace(/^Used the software for:\s*/i, "");
 
-      // Role / job title
-      var role = textOf(el, '[data-testid*="reviewer-title"], [data-testid*="job-title"], [class*="reviewer-title"]') ||
-                 textOf(el, '[class*="job-title"]') ||
-                 textOf(el, '[class*="reviewer-role"]') || "";
+      var j = ri + 1;
 
-      // Company size
-      var companySize = textOf(el, '[data-testid*="company-size"], [class*="company-size"]') || "";
-
-      // Overall rating — look for numeric value near a star display
-      var ratingRaw = "";
-      var ratingEl = el.querySelector('[data-testid*="overall-rating"] [data-testid*="value"], [class*="overall-rating"] [class*="value"]') ||
-                     el.querySelector('[data-testid*="rating-value"]') ||
-                     el.querySelector('[class*="rating-score"], [class*="ratingValue"]');
-      if (ratingEl) {
-        ratingRaw = clean(ratingEl.textContent);
+      // Title: line starting with a quote char
+      var title = "";
+      if (j < bodyLines.length && /^["""«“]/.test(bodyLines[j])) {
+        title = bodyLines[j].replace(/^["""«“]|["""»”]$/g, "").trim();
+        j++;
       }
-      if (!parseFloat(ratingRaw)) {
-        // Fallback: count filled stars
-        var stars = el.querySelectorAll('[class*="star--filled"], [class*="star-filled"], [class*="full-star"], [aria-label*=" out of"]');
-        if (stars.length) {
-          ratingRaw = String(stars.length);
-        } else {
-          var ariaRating = el.querySelector('[aria-label*=" out of 5"]');
-          if (ariaRating) {
-            var m = (ariaRating.getAttribute("aria-label") || "").match(/(\d+(?:\.\d+)?)\s+out of/);
-            if (m) ratingRaw = m[1];
-          }
+
+      // Date (handles both abbreviated "May 12, 2026" and full "March 27, 2026")
+      var date = "";
+      if (j < bodyLines.length && /\b(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\b.+\d{4}/.test(bodyLines[j])) {
+        date = bodyLines[j]; j++;
+      }
+
+      // Rating
+      var rating = null;
+      if (j < bodyLines.length && /^\d+\.\d+$/.test(bodyLines[j])) {
+        rating = parseFloat(bodyLines[j]); j++;
+      }
+
+      // Overall comment + Pros/Cons
+      var overallLines = [], prosLines = [], consLines = [];
+      var section = "overall";
+      while (j < bodyLines.length) {
+        var l = bodyLines[j];
+        if (/^Used the software for:/i.test(l)) break;
+        if (l === "Review Source" || l === "View less" || l === "Show more") { j++; break; }
+        if (l === "Pros") { section = "pros"; j++; continue; }
+        if (l === "Cons") { section = "cons"; j++; continue; }
+        if (l === "Switched from" || l === "Reasons for switching" || l === "Reasons for Switching") {
+          section = "skip"; j++; continue;
         }
-      }
-      var rating = parseFloat(ratingRaw) || null;
-
-      // Review title
-      var title = textOf(el, '[data-testid*="review-title"], [class*="review-title"]') ||
-                  textOf(el, 'h3') || textOf(el, 'h2') || "";
-
-      // Pros
-      var pros = "";
-      var prosEl = el.querySelector('[data-testid*="pros"], [class*="pros-section"], [class*="review-pros"]');
-      if (prosEl) {
-        pros = clean(prosEl.textContent).replace(/^pros?\s*:?\s*/i, "");
-      } else {
-        // Look for a paragraph preceded by "Pros" label
-        var allParas = el.querySelectorAll("p, div[class*='content']");
-        for (var pi = 0; pi < allParas.length; pi++) {
-          var prev = allParas[pi].previousElementSibling;
-          if (prev && /\bpros?\b/i.test(clean(prev.textContent))) {
-            pros = clean(allParas[pi].textContent);
-            break;
-          }
-          // Or inline "Pros:" prefix
-          var ptext = clean(allParas[pi].textContent);
-          if (/^pros?\s*:/i.test(ptext)) {
-            pros = ptext.replace(/^pros?\s*:\s*/i, "");
-            break;
-          }
-        }
+        if (section === "overall") overallLines.push(l);
+        else if (section === "pros") prosLines.push(l);
+        else if (section === "cons") consLines.push(l);
+        j++;
       }
 
-      // Cons
-      var cons = "";
-      var consEl = el.querySelector('[data-testid*="cons"], [class*="cons-section"], [class*="review-cons"]');
-      if (consEl) {
-        cons = clean(consEl.textContent).replace(/^cons?\s*:?\s*/i, "");
-      } else {
-        var allParas2 = el.querySelectorAll("p, div[class*='content']");
-        for (var ci = 0; ci < allParas2.length; ci++) {
-          var prev2 = allParas2[ci].previousElementSibling;
-          if (prev2 && /\bcons?\b/i.test(clean(prev2.textContent))) {
-            cons = clean(allParas2[ci].textContent);
-            break;
-          }
-          var ctext = clean(allParas2[ci].textContent);
-          if (/^cons?\s*:/i.test(ctext)) {
-            cons = ctext.replace(/^cons?\s*:\s*/i, "");
-            break;
-          }
-        }
+      var overall = overallLines.join(" ");
+      var pros = prosLines.join(" ");
+      var cons = consLines.join(" ");
+
+      if (reviewer || title || pros) {
+        reviews.push({
+          reviewer: reviewer,
+          role: role,
+          companyInfo: companyInfo,
+          usageDuration: usageDuration,
+          rating: rating,
+          title: title,
+          overall: overall,
+          pros: pros,
+          cons: cons,
+          date: date
+        });
       }
 
-      // Date
-      var dateEl = el.querySelector('time') ||
-                   el.querySelector('[data-testid*="review-date"], [class*="review-date"]');
-      var date = dateEl ? (dateEl.getAttribute("datetime") || clean(dateEl.textContent)) : "";
-
-      if (!reviewer && !title && !pros) continue; // skip empty placeholders
-
-      reviews.push({
-        reviewer: reviewer,
-        role: role,
-        companySize: companySize,
-        rating: rating,
-        title: title,
-        pros: pros,
-        cons: cons,
-        date: date
-      });
+      ri = j;
     }
 
     var productName = clean(
@@ -194,13 +161,13 @@ Examples:
     if (mode === "display") {
       var h = "<div style='font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;max-width:850px;margin:0 auto;padding:20px;'>";
       h += "<h2 style='margin:0 0 16px;'>Capterra Reviews: " + esc(data.productName) + "</h2>";
-      for (var j = 0; j < reviews.length; j++) {
-        var r = reviews[j];
+      for (var di = 0; di < reviews.length; di++) {
+        var r = reviews[di];
         h += "<div style='border:1px solid #e0e0e0;border-radius:6px;padding:16px;margin-bottom:16px;'>";
         h += "<div style='display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;'>";
         h += "<div><strong>" + esc(r.reviewer || "Anonymous") + "</strong>";
         if (r.role) h += " <span style='color:#888;font-size:13px;'>— " + esc(r.role) + "</span>";
-        if (r.companySize) h += " <span style='color:#aaa;font-size:12px;'>(" + esc(r.companySize) + ")</span>";
+        if (r.companyInfo) h += " <span style='color:#aaa;font-size:12px;'>(" + esc(r.companyInfo) + ")</span>";
         h += "</div>";
         if (r.rating) h += "<div style='color:#e67e22;font-weight:700;font-size:16px;'>" + r.rating + " ★</div>";
         h += "</div>";
@@ -218,4 +185,4 @@ Examples:
 })
 ```
 
-**Returns:** `{ url, extractedAt, productName, reviewsExtracted, reviews: [{ reviewer, role, companySize, rating, title, pros, cons, date }] }`
+**Returns:** `{ url, extractedAt, productName, reviewsExtracted, reviews: [{ reviewer, role, companyInfo, usageDuration, rating, title, overall, pros, cons, date }] }`
