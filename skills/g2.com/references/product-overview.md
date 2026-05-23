@@ -64,34 +64,38 @@ Examples:
       return isNaN(n) ? null : n;
     }
 
-    // Product name
+    // Product name — h1 on G2 is "X Reviews & Product Details", strip the suffix
     var productName = textOf('h1[itemprop="name"]') ||
                       textOf('.product-head__title h1') ||
                       textOf('.product-head__title') ||
                       textOf('h1') ||
                       document.title.replace(/Reviews.*$/i, "").trim();
+    productName = productName.replace(/\s*Reviews\s*(&|and)\s*Product Details\s*$/i, "").trim();
 
-    // Overall rating
+    // Overall rating — schema markup is most reliable
     var ratingEl = document.querySelector('[itemprop="ratingValue"]');
     var ratingRaw = ratingEl ? clean(ratingEl.getAttribute("content") || ratingEl.textContent) :
                    textOf('.fw-semibold.l2') ||
-                   textOf('[class*="rating"][class*="avg"]') ||
-                   textOf('.stars-rating-avg') || "";
+                   textOf('[class*="rating"][class*="avg"]') || "";
     var overallRating = parseFloat(ratingRaw) || null;
 
-    // Review count
+    // Review count — schema content attr (textContent is often empty)
     var countEl = document.querySelector('[itemprop="reviewCount"]');
-    var reviewCountRaw = countEl ? clean(countEl.getAttribute("content") || countEl.textContent) :
+    var reviewCountRaw = countEl ? (countEl.getAttribute("content") || clean(countEl.textContent)) :
                          textOf('[class*="ratings-count"]') ||
                          textOf('[class*="review-count"]') || "";
     var reviewCount = numFrom(reviewCountRaw.replace(/reviews?/i, "")) || numFrom(reviewCountRaw);
 
-    // Category from breadcrumb
+    // Category — find 2nd-to-last breadcrumb link before the product name
     var category = "";
-    var breadcrumbs = document.querySelectorAll('[aria-label="Breadcrumb"] a, .breadcrumbs a, nav[aria-label*="read"] a, .l3.link__inherit');
-    if (breadcrumbs.length > 0) {
-      category = clean(breadcrumbs[breadcrumbs.length - 1].textContent);
+    var allLinks = document.querySelectorAll("a");
+    var catCandidates = [];
+    for (var li = 0; li < allLinks.length; li++) {
+      var href = allLinks[li].getAttribute("href") || "";
+      var txt = clean(allLinks[li].textContent);
+      if (href.indexOf("/categories/") > -1 && txt && txt.length > 3) catCandidates.push(txt);
     }
+    if (catCandidates.length > 0) category = catCandidates[catCandidates.length - 1];
     if (!category) category = textOf('[class*="category"] a') || textOf('[class*="product-category"]');
 
     // G2 score
@@ -123,19 +127,25 @@ Examples:
       }
     }
 
-    // Pros and cons highlights
+    // Pros and cons — extract from review text following G2's "What do you like best" / "What do you dislike" questions
     var pros = [];
     var cons = [];
-    var proEls = document.querySelectorAll('[class*="pro"] [class*="highlight"], [class*="pros"] li, [class*="liked-best"] p');
-    var conEls = document.querySelectorAll('[class*="con"] [class*="highlight"], [class*="cons"] li, [class*="disliked"] p');
-    for (var pi = 0; pi < proEls.length && pros.length < 5; pi++) {
-      var pt = clean(proEls[pi].textContent);
-      if (pt) pros.push(pt);
-    }
-    for (var ci = 0; ci < conEls.length && cons.length < 5; ci++) {
-      var ct = clean(conEls[ci].textContent);
-      if (ct) cons.push(ct);
-    }
+    var bodyText = document.body.innerText || "";
+    var likePattern = /What do you like best about [^?\n]+\?/gi;
+    var dislikePattern = /What do you dislike about [^?\n]+\?/gi;
+    var extractSnippets = function(text, pattern, limit) {
+      var results = [];
+      var match;
+      var re = new RegExp(pattern.source, pattern.flags);
+      while ((match = re.exec(text)) !== null && results.length < limit) {
+        var after = text.substring(match.index + match[0].length).trim();
+        var snippet = after.split(/\n\n|What do you/)[0].trim();
+        if (snippet && snippet.length > 20 && snippet.length < 400) results.push(snippet);
+      }
+      return results;
+    };
+    pros = extractSnippets(bodyText, likePattern, 3);
+    cons = extractSnippets(bodyText, dislikePattern, 3);
 
     var data = {
       url: window.location.href,
