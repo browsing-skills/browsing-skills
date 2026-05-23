@@ -53,32 +53,39 @@ Use when the user wants the full details of a specific Yad2 property listing.
       return el ? el.textContent.trim() : "";
     };
 
-    var extractField = function(label) {
-      var spans = document.querySelectorAll(".property-detail_details__iHCfm");
-      for (var i = 0; i < spans.length; i++) {
-        if (spans[i].textContent.indexOf(label) !== -1) {
-          var valEl = spans[i].querySelector('[data-testid="building-text"]') || spans[i].querySelector(".property-detail_itemValue__V0z6l");
-          return valEl ? valEl.textContent.trim() : "";
-        }
-      }
-      return "";
+    // Yad2 2025: all key fields exposed via stable data-testid attributes
+    var getTestId = function(tid) {
+      var el = document.querySelector('[data-testid="' + tid + '"]');
+      return el ? el.textContent.trim() : "";
     };
 
     var data = {};
 
-    data.listingUrl = window.location.href.split("?")[0];
-    data.title = getText('[data-testid="heading"]');
-    data.address = getText('[data-testid="address"]');
-    data.price = getText('[data-testid="price"]');
+    data.listingUrl  = window.location.href.split("?")[0];
+    data.title       = getTestId("heading");        // neighbourhood / street
+    data.address     = getTestId("address");        // property type + city
+    data.fullAddress = getTestId("address-line");   // full street address
+    data.price       = getTestId("price");
+    data.description = getTestId("property-description");
 
-    data.rooms = extractField("חדרים");
-    data.floor = extractField("קומה");
-    data.area = extractField('מטר רבוע') || extractField('מ"ר') || extractField("מועד");
+    // Structured property details
+    data.buildingDetails = getTestId("building-details"); // e.g. "5חדריםקומה3/10145מ״ר"
+    data.dealType        = getTestId("deal-type-value");
+    data.condition       = getTestId("property-condition-value");
+    data.areaSqm         = getTestId("square-meter-build-value");
+    data.totalFloors     = getTestId("building-top-floor-value");
+    data.parking         = getTestId("parking-value");
+    data.pricePerSqm     = getTestId("price-per-squaremeter-value");
+    data.entranceDate    = getTestId("entrance-date-value");
+    data.publishedDate   = getTestId("report-ad-label").replace(/^פורסם ב\s*/, "").trim();
 
-    data.description = getText(".description_description__9t6rz");
+    // Amenities list from the "מה יש בנכס" grid
+    var amenGrid = document.querySelector('[data-testid="in-property-grid"]');
+    data.amenities = amenGrid ? amenGrid.innerText.trim().split(/\n+/).map(function(l){return l.trim();}).filter(Boolean) : [];
 
-    data.contactName = getText(".agency-ad-contact-info_name__qDEFO") || getText(".ad-contact-info_name___wj34");
-    data.phone = getText(".phone-number-link_phoneNumberText__ayXOk");
+    // Contact
+    data.contactName = getTestId("agency-ad-contact-info-name");
+    data.phone       = getText('[data-testid="phone-number-link-anchor"]');
 
     var imgEls = document.querySelectorAll('img[src*="yad2"]');
     var images = [];

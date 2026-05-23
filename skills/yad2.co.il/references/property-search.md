@@ -64,12 +64,15 @@ Use when the user wants to search Yad2 for properties for sale and extract visib
 
       var card = anchor;
 
-      var headingEl = card.querySelector(".item-data-content_heading__tphH4");
-      var address = headingEl ? headingEl.textContent.trim() : "";
+      // Yad2 2025: stable data-testid attributes on all listing cards
+      var streetEl = card.querySelector('[data-testid="street-name"]');
+      var address = streetEl ? streetEl.textContent.trim() : "";
 
-      var infoLines = card.querySelectorAll(".item-data-content_itemInfoLine__AeoPP");
-      var typeAndCity = infoLines.length > 0 ? infoLines[0].textContent.trim() : "";
-      var details = infoLines.length > 1 ? infoLines[1].textContent.trim() : "";
+      var line1El = card.querySelector('[data-testid="item-info-line-1st"]');
+      var typeAndCity = line1El ? line1El.textContent.trim() : "";
+
+      var line2El = card.querySelector('[data-testid="item-info-line-2nd"]');
+      var details = line2El ? line2El.textContent.trim() : "";
 
       var priceEl = card.querySelector('[data-testid="price"]');
       var price = priceEl ? priceEl.textContent.trim() : "";
