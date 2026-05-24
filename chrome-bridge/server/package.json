@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Local WebSocket+HTTP bridge that relays commands from an AI agent to the companion Chrome extension.",
   "type": "module",
+  "scripts": {
+    "start": "node bridge.js"
+  },
   "dependencies": {
     "ws": "^8.18.0"
   }
