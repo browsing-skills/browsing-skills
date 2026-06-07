@@ -1,6 +1,6 @@
 ---
 name: browsing-x
-description: "Use when the user wants to interact with X (formerly Twitter) — search for posts, extract a specific post's data (content + engagement + author), or extract a user's profile (bio, followers, etc.). Works on x.com and twitter.com. Requires a logged-in session (auth_token cookie) and a real browser — X is a JS-rendered SPA."
+description: "Use when the user wants to interact with X (formerly Twitter) - search for posts, extract a specific post's data (content + engagement + author), extract a user's profile, or assemble visible source context for review or OpenClaw/TweetClaw handoff. Works on x.com and twitter.com. Requires a logged-in session (auth_token cookie) and a real browser - X is a JS-rendered SPA."
 ---
 
 # X (Twitter) — Browsing Skill
@@ -12,6 +12,7 @@ Use this index to choose the X action that matches the user request, then open t
 - **search** — Search X for a query and extract visible post results. Full spec: [references/search.md](references/search.md).
 - **post-data** — Extract a specific post's content, author details, engagement metrics, timestamp, and media. Full spec: [references/post-data.md](references/post-data.md).
 - **profile-data** — Extract an X user profile, including bio, follower counts, avatar, website, and account metadata. Full spec: [references/profile-data.md](references/profile-data.md).
+- **source-context** - Assemble visible posts, links, media flags, metrics, and canonical URLs into a source packet for review or optional TweetClaw/OpenClaw follow-up. Full spec: [references/source-context.md](references/source-context.md).
 
 ## Benchmarks
 
@@ -22,4 +23,3 @@ Benchmarks compare the maintained skill action against a no-skill browser agent 
 | search | 1,699 / ~6.4s | 3,907 / ~15.8s | Skill valid; no-skill malformed partial result. |
 | post-data | 1,987 / ~4.3s | 14,333 / ~35.1s | Skill complete; no-skill partial result. |
 | profile-data | 1,865 / ~12.3s | 324 / failed | Skill complete; no-skill one-shot eval failed. |
-
