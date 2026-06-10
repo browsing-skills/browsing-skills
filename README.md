@@ -24,7 +24,7 @@ The library currently includes skills for:
 | Website | Skill | Available actions |
 |---|---|---|
 | Reddit | [`skills/reddit.com`](./skills/reddit.com) | `subreddit-feed`, `search`, `post-thread`, `user-profile`, `current-user-list` |
-| X | [`skills/x.com`](./skills/x.com) | `search`, `post-data`, `profile-data` |
+| X | [`skills/x.com`](./skills/x.com) | `search`, `post-data`, `profile-data`, `source-context` |
 | LinkedIn | [`skills/linkedin.com`](./skills/linkedin.com) | `post-data` |
 | TikTok | [`skills/tiktok.com`](./skills/tiktok.com) | `get-post-analytics`, `get-posts-list`, `download-post-video` |
 | Facebook | [`skills/facebook.com`](./skills/facebook.com) | `marketplace-search`, `marketplace-listing-data`, `marketplace-seller-data` |
