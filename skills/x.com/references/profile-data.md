@@ -46,6 +46,9 @@ Use when the user wants info about a specific X user (bio, followers, etc.). Req
   execute: function(params) {
     var mode = (params && params.mode) || "data";
     var data = {};
+    function esc(value) {
+      return String(value || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
     var nameEl = document.querySelector("[data-testid=UserName]");
     if (nameEl) {
       var nameSpan = nameEl.querySelector("span");
@@ -71,22 +74,16 @@ Use when the user wants info about a specific X user (bio, followers, etc.). Req
       var avatarImgs = primaryCol.querySelectorAll("img[src*=profile_images]");
       if (avatarImgs.length > 0) data.avatarUrl = avatarImgs[0].src.replace(/_bigger|_normal|_x96|_200x200|_400x400/g, "");
     }
-    var headerItems = document.querySelector("[data-testid=UserProfileHeader_Items]");
-    if (headerItems) {
-      var headerLinks = headerItems.querySelectorAll("a[href]");
-      for (var k = 0; k < headerLinks.length; k++) {
-        var lhref = headerLinks[k].getAttribute("href");
-        if (lhref && !lhref.includes("x.com") && !lhref.includes("twitter.com")) data.website = headerLinks[k].textContent.trim();
-      }
-    }
+    var websiteEl = document.querySelector("[data-testid=UserUrl]");
+    if (websiteEl) { var websiteLink = websiteEl.querySelector("a[href]"); data.website = websiteLink ? websiteLink.textContent.trim() : ""; }
     if (mode === "display") {
       var h = "<div style=\"font-family:-apple-system,sans-serif;background:#0f0f0f;color:#e0e0e0;padding:24px;max-width:600px;margin:0 auto;border-radius:12px;\">";
       h += "<div style=\"display:flex;align-items:center;gap:16px;margin-bottom:16px;\">";
-      if (data.avatarUrl) h += "<img src=\"" + data.avatarUrl + "\" style=\"width:64px;height:64px;border-radius:50%;\">";
-      h += "<div><div style=\"font-weight:600;font-size:20px;\">" + (data.displayName||"") + (data.verified?" \u2713":"") + "</div>";
-      h += "<div style=\"color:#888;\">" + (data.handle||"") + "</div></div></div>";
-      if (data.bio) h += "<div style=\"margin-bottom:16px;\">" + data.bio + "</div>";
-      h += "<div style=\"display:flex;gap:20px;margin-bottom:12px;\"><span><strong>" + (data.following||"0") + "</strong> Following</span><span><strong>" + (data.followers||"0") + "</strong> Followers</span></div>";
+      if (data.avatarUrl) h += "<img src=\"" + esc(data.avatarUrl) + "\" style=\"width:64px;height:64px;border-radius:50%;\">";
+      h += "<div><div style=\"font-weight:600;font-size:20px;\">" + esc(data.displayName||"") + (data.verified?" \u2713":"") + "</div>";
+      h += "<div style=\"color:#888;\">" + esc(data.handle||"") + "</div></div></div>";
+      if (data.bio) h += "<div style=\"margin-bottom:16px;\">" + esc(data.bio) + "</div>";
+      h += "<div style=\"display:flex;gap:20px;margin-bottom:12px;\"><span><strong>" + esc(data.following||"0") + "</strong> Following</span><span><strong>" + esc(data.followers||"0") + "</strong> Followers</span></div>";
       h += "</div>";
       return { content: [{ type: "text", text: h }] };
     }
@@ -109,4 +106,3 @@ If one of these actions breaks (selectors changed, X updated their UI), file an 
 - **With skill:** 1,865 tokens, ~12.3s total.
 - **Without skill:** 324 tokens, failed extraction.
 - **Comparison:** Skill extracted OpenAI profile name, handle, verification, bio, join date, following/followers, and URL. No-skill one-shot extractor failed with an uncaught browser eval error before returning structured data.
-

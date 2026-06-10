@@ -117,6 +117,9 @@ Modes:
     }
 
     var sleep = function(ms) { return new Promise(function(r) { setTimeout(r, ms); }); };
+    var esc = function(value) {
+      return String(value || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    };
 
     // Click all visible "…see more" buttons
     var clickSeeMore = function() {
@@ -252,7 +255,15 @@ Modes:
     }
 
     // Apply filter
-    var filterRe = filterPattern ? new RegExp(filterPattern, "i") : null;
+    var filterRe = null;
+    var filterError = "";
+    if (filterPattern) {
+      try {
+        filterRe = new RegExp(filterPattern, "i");
+      } catch(e) {
+        filterError = String((e && e.message) || e || "Invalid regular expression");
+      }
+    }
     var filtered = filterRe
       ? posts.filter(function(p) { return filterRe.test(p.body) || filterRe.test(p.author) || filterRe.test(p.tags.join(" ")); })
       : posts;
@@ -263,6 +274,7 @@ Modes:
       md += "_Extracted: " + new Date().toISOString().slice(0, 10);
       md += " · " + filtered.length + " of " + posts.length + " posts";
       if (filterRe) md += " (filter: `" + filterPattern + "`)";
+      if (filterError) md += " (filter ignored: `" + filterError + "`)";
       md += "_\n\n---\n\n";
       for (var m = 0; m < filtered.length; m++) {
         var p = filtered[m];
@@ -285,22 +297,22 @@ Modes:
     if (mode === "display") {
       var h = "<div style=\"font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#0f0f0f;color:#e0e0e0;padding:24px;max-width:720px;margin:0 auto;\">";
       h += "<h2 style=\"color:#fff;margin:0 0 4px;\">LinkedIn Saved Posts</h2>";
-      h += "<p style=\"color:#888;margin:0 0 24px;font-size:13px;\">" + filtered.length + " posts" + (filterRe ? " matching <code>" + filterPattern + "</code>" : "") + "</p>";
+      h += "<p style=\"color:#888;margin:0 0 24px;font-size:13px;\">" + filtered.length + " posts" + (filterRe ? " matching <code>" + esc(filterPattern) + "</code>" : "") + (filterError ? " <span style=\"color:#ffb4a8;\">filter ignored: " + esc(filterError) + "</span>" : "") + "</p>";
       for (var d = 0; d < filtered.length; d++) {
         var dp = filtered[d];
         h += "<div style=\"padding:16px;margin-bottom:12px;background:#1a1a1a;border-radius:8px;\">";
-        if (dp.previewImg) h += "<img src=\"" + dp.previewImg + "\" style=\"width:100%;height:160px;object-fit:cover;border-radius:4px;margin-bottom:12px;display:block;\">";
-        h += "<div style=\"font-weight:600;color:#fff;\">" + (dp.author || "Unknown") + "</div>";
-        if (dp.authorHeadline) h += "<div style=\"font-size:12px;color:#888;margin-bottom:8px;\">" + dp.authorHeadline.slice(0, 100) + "</div>";
-        h += "<div style=\"font-size:13px;line-height:1.6;margin:8px 0;\">" + dp.body.slice(0, 400) + (dp.body.length > 400 ? "…" : "") + "</div>";
+        if (dp.previewImg) h += "<img src=\"" + esc(dp.previewImg) + "\" style=\"width:100%;height:160px;object-fit:cover;border-radius:4px;margin-bottom:12px;display:block;\">";
+        h += "<div style=\"font-weight:600;color:#fff;\">" + esc(dp.author || "Unknown") + "</div>";
+        if (dp.authorHeadline) h += "<div style=\"font-size:12px;color:#888;margin-bottom:8px;\">" + esc(dp.authorHeadline.slice(0, 100)) + "</div>";
+        h += "<div style=\"font-size:13px;line-height:1.6;margin:8px 0;\">" + esc(dp.body.slice(0, 400)) + (dp.body.length > 400 ? "…" : "") + "</div>";
         if (dp.tags.length) {
           h += "<div style=\"margin-top:8px;\">";
           for (var tgi = 0; tgi < dp.tags.length; tgi++) {
-            h += "<span style=\"background:#0a66c2;color:#fff;padding:2px 8px;border-radius:12px;font-size:11px;margin-right:4px;\">" + dp.tags[tgi] + "</span>";
+            h += "<span style=\"background:#0a66c2;color:#fff;padding:2px 8px;border-radius:12px;font-size:11px;margin-right:4px;\">" + esc(dp.tags[tgi]) + "</span>";
           }
           h += "</div>";
         }
-        if (dp.permalink) h += "<div style=\"margin-top:10px;\"><a href=\"" + dp.permalink + "\" style=\"color:#70b5f9;font-size:12px;\">View post →</a></div>";
+        if (dp.permalink) h += "<div style=\"margin-top:10px;\"><a href=\"" + esc(dp.permalink) + "\" style=\"color:#70b5f9;font-size:12px;\">View post →</a></div>";
         h += "</div>";
       }
       h += "</div>";
@@ -308,13 +320,13 @@ Modes:
     }
 
     // ── data mode (default) ───────────────────────────────────────────────────
-    return { content: [{ type: "text", text: JSON.stringify({ total: posts.length, filtered: filtered.length, filterPattern: filterPattern || null, posts: filtered }, null, 2) }] };
+    return { content: [{ type: "text", text: JSON.stringify({ total: posts.length, filtered: filtered.length, filterPattern: filterPattern || null, filterError: filterError || null, posts: filtered }, null, 2) }] };
   }
 })
 ```
 
 **Returns:**
-- `data` mode: `{ total, filtered, filterPattern, posts: [{ index, urn, permalink, author, authorHeadline, timestamp, body, mediaType, previewImg, tags }] }`
+- `data` mode: `{ total, filtered, filterPattern, filterError, posts: [{ index, urn, permalink, author, authorHeadline, timestamp, body, mediaType, previewImg, tags }] }`
 - `markdown` mode: ready-to-paste markdown digest
 - `display` mode: self-contained dark-theme HTML
 
