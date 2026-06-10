@@ -28,6 +28,7 @@ The library currently includes skills for:
 | LinkedIn | [`skills/linkedin.com`](./skills/linkedin.com) | `post-data` |
 | TikTok | [`skills/tiktok.com`](./skills/tiktok.com) | `get-post-analytics`, `get-posts-list`, `download-post-video` |
 | Facebook | [`skills/facebook.com`](./skills/facebook.com) | `marketplace-search`, `marketplace-listing-data`, `marketplace-seller-data` |
+| Instagram | [`skills/instagram.com`](./skills/instagram.com) | `profile-data`, `user-posts` |
 | Google Maps | [`skills/maps.google.com`](./skills/maps.google.com) | `place-search`, `place-data` |
 | Hacker News | [`skills/news.ycombinator.com`](./skills/news.ycombinator.com) | `frontpage`, `post-data`, `search` |
 | Substack | [`skills/substack.com`](./skills/substack.com) | `publication-data`, `post-data` |
