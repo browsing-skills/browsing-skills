@@ -24,10 +24,19 @@ The library currently includes skills for:
 | Website | Skill | Available actions |
 |---|---|---|
 | Reddit | [`skills/reddit.com`](./skills/reddit.com) | `subreddit-feed`, `search`, `post-thread`, `user-profile`, `current-user-list` |
-| X | [`skills/x.com`](./skills/x.com) | `search`, `post-data`, `profile-data` |
+| X | [`skills/x.com`](./skills/x.com) | `search`, `post-data`, `profile-data`, `source-context` |
 | LinkedIn | [`skills/linkedin.com`](./skills/linkedin.com) | `post-data` |
 | TikTok | [`skills/tiktok.com`](./skills/tiktok.com) | `get-post-analytics`, `get-posts-list`, `download-post-video` |
 | Facebook | [`skills/facebook.com`](./skills/facebook.com) | `marketplace-search`, `marketplace-listing-data`, `marketplace-seller-data` |
+| Google Maps | [`skills/maps.google.com`](./skills/maps.google.com) | `place-search`, `place-data` |
+| Hacker News | [`skills/news.ycombinator.com`](./skills/news.ycombinator.com) | `frontpage`, `post-data`, `search` |
+| Substack | [`skills/substack.com`](./skills/substack.com) | `publication-data`, `post-data` |
+| G2 | [`skills/g2.com`](./skills/g2.com) | `product-overview`, `product-reviews` |
+| Capterra | [`skills/capterra.com`](./skills/capterra.com) | `product-overview`, `product-reviews` |
+| Craigslist | [`skills/craigslist.org`](./skills/craigslist.org) | `listing-search`, `listing-data` |
+| Yad2 | [`skills/yad2.co.il`](./skills/yad2.co.il) | `property-search`, `listing-data` |
+| Madlan | [`skills/madlan.co.il`](./skills/madlan.co.il) | `property-search`, `listing-data` |
+| Zillow | [`skills/zillow.com`](./skills/zillow.com) | `property-search`, `listing-data` |
 | Amazon | [`skills/amazon.com`](./skills/amazon.com) | `search`, `product-data`, `grocery-storefront`, `cart-data`, `add-to-cart` |
 | Walmart | [`skills/walmart.com`](./skills/walmart.com) | `search`, `product-data`, `cart-data`, `add-to-cart` |
 | Target | [`skills/target.com`](./skills/target.com) | `search`, `product-data`, `cart-data`, `add-to-cart` |
