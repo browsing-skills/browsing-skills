@@ -53,6 +53,9 @@ Use when the user wants the visible posts from an Instagram user's profile grid 
     var limit = (params && params.limit) || 12;
     var mode = (params && params.mode) || "data";
     var posts = [];
+    function esc(value) {
+      return String(value || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
 
     // Posts are inside article elements or anchors with /p/ in href
     var anchors = document.querySelectorAll('a[href*="/p/"]');
@@ -99,13 +102,13 @@ Use when the user wants the visible posts from an Instagram user's profile grid 
 
     if (mode === "display") {
       var h = "<div style=\"font-family:-apple-system,sans-serif;background:#fafafa;color:#262626;padding:24px;max-width:700px;margin:0 auto;border-radius:12px;border:1px solid #dbdbdb;\">";
-      h += "<h2 style=\"margin:0 0 16px;\">@" + username + " — " + posts.length + " posts</h2>";
+      h += "<h2 style=\"margin:0 0 16px;\">@" + esc(username) + " — " + posts.length + " posts</h2>";
       h += "<div style=\"display:grid;grid-template-columns:repeat(3,1fr);gap:4px;\">";
       for (var pi = 0; pi < posts.length; pi++) {
         var p = posts[pi];
-        h += "<a href=\"" + p.url + "\" target=\"_blank\" style=\"display:block;aspect-ratio:1;overflow:hidden;\">";
+        h += "<a href=\"" + esc(p.url) + "\" target=\"_blank\" style=\"display:block;aspect-ratio:1;overflow:hidden;\">";
         if (p.thumbnailSrc) {
-          h += "<img src=\"" + p.thumbnailSrc + "\" alt=\"" + (p.altText || '').replace(/"/g, '&quot;') + "\" style=\"width:100%;height:100%;object-fit:cover;display:block;\">";
+          h += "<img src=\"" + esc(p.thumbnailSrc) + "\" alt=\"" + esc(p.altText || '') + "\" style=\"width:100%;height:100%;object-fit:cover;display:block;\">";
         }
         h += "</a>";
       }

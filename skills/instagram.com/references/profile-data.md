@@ -51,6 +51,9 @@ Use when the user wants info about a specific Instagram user (bio, follower coun
   execute: function(params) {
     var mode = (params && params.mode) || "data";
     var data = {};
+    function esc(value) {
+      return String(value || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
 
     // Primary: DOM extraction — more reliable than JSON (avoids embedded/cached profiles)
     // username from URL path
@@ -132,17 +135,17 @@ Use when the user wants info about a specific Instagram user (bio, follower coun
     if (mode === "display") {
       var h = "<div style=\"font-family:-apple-system,sans-serif;background:#fafafa;color:#262626;padding:24px;max-width:600px;margin:0 auto;border-radius:12px;border:1px solid #dbdbdb;\">";
       h += "<div style=\"display:flex;align-items:center;gap:20px;margin-bottom:20px;\">";
-      if (data.avatarUrl) h += "<img src=\"" + data.avatarUrl + "\" style=\"width:80px;height:80px;border-radius:50%;border:2px solid #dbdbdb;\">";
+      if (data.avatarUrl) h += "<img src=\"" + esc(data.avatarUrl) + "\" style=\"width:80px;height:80px;border-radius:50%;border:2px solid #dbdbdb;\">";
       h += "<div>";
-      h += "<div style=\"font-size:20px;font-weight:600;\">" + (data.username || '') + (data.is_verified ? " ✓" : "") + "</div>";
-      if (data.fullName) h += "<div style=\"color:#8e8e8e;\">" + data.fullName + "</div>";
+      h += "<div style=\"font-size:20px;font-weight:600;\">" + esc(data.username || '') + (data.is_verified ? " ✓" : "") + "</div>";
+      if (data.fullName) h += "<div style=\"color:#8e8e8e;\">" + esc(data.fullName) + "</div>";
       h += "</div></div>";
-      if (data.bio) h += "<div style=\"margin-bottom:16px;white-space:pre-wrap;\">" + data.bio + "</div>";
-      if (data.website) h += "<div style=\"margin-bottom:16px;\"><a href=\"" + data.website + "\" style=\"color:#00376b;\">" + data.website + "</a></div>";
+      if (data.bio) h += "<div style=\"margin-bottom:16px;white-space:pre-wrap;\">" + esc(data.bio) + "</div>";
+      if (data.website) h += "<div style=\"margin-bottom:16px;\"><a href=\"" + esc(data.website) + "\" style=\"color:#00376b;\">" + esc(data.website) + "</a></div>";
       h += "<div style=\"display:flex;gap:24px;\">";
-      h += "<span><strong>" + (data.postCount || '—') + "</strong> posts</span>";
-      h += "<span><strong>" + (data.followers || '—') + "</strong> followers</span>";
-      h += "<span><strong>" + (data.following || '—') + "</strong> following</span>";
+      h += "<span><strong>" + esc(data.postCount || '—') + "</strong> posts</span>";
+      h += "<span><strong>" + esc(data.followers || '—') + "</strong> followers</span>";
+      h += "<span><strong>" + esc(data.following || '—') + "</strong> following</span>";
       h += "</div></div>";
       return { content: [{ type: "text", text: h }] };
     }

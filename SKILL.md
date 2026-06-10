@@ -1,6 +1,6 @@
 ---
 name: browsing-skills
-description: "Umbrella skill for a library of website-specific browsing skills. Use when the user's request targets one of these specific websites: <!-- DOMAINS:START -->airbnb.com, aliexpress.com, amazon.com, booking.com, capterra.com, craigslist.org, facebook.com, g2.com, glassdoor.com, linkedin.com, madlan.co.il, maps.google.com, news.ycombinator.com, reddit.com, substack.com, target.com, tiktok.com, walmart.com, x.com, yad2.co.il, zillow.com<!-- DOMAINS:END -->. For supported sites: load the site-specific action index at skills/<domain>/SKILL.md from this repo, then open only the linked reference file for the chosen action. For unsupported sites: handle the request the normal way — don't force this skill. Each site's skill is also installable independently — if you only ever deal with one site, install that site's skill directly and skip this umbrella."
+description: "Umbrella skill for a library of website-specific browsing skills. Use when the user's request targets one of these specific websites: <!-- DOMAINS:START -->airbnb.com, aliexpress.com, amazon.com, booking.com, capterra.com, craigslist.org, facebook.com, g2.com, glassdoor.com, instagram.com, linkedin.com, madlan.co.il, maps.google.com, news.ycombinator.com, reddit.com, substack.com, target.com, tiktok.com, walmart.com, x.com, yad2.co.il, zillow.com<!-- DOMAINS:END -->. For supported sites: load the site-specific action index at skills/<domain>/SKILL.md from this repo, then open only the linked reference file for the chosen action. For unsupported sites: handle the request the normal way — don't force this skill. Each site's skill is also installable independently — if you only ever deal with one site, install that site's skill directly and skip this umbrella."
 supportedDomains:
   - airbnb.com
   - aliexpress.com
@@ -11,6 +11,7 @@ supportedDomains:
   - facebook.com
   - g2.com
   - glassdoor.com
+  - instagram.com
   - linkedin.com
   - madlan.co.il
   - maps.google.com
@@ -35,7 +36,7 @@ Repo: https://github.com/browsing-skills/browsing-skills
 
 You're loaded into an agent that might work with *any* website. When the user mentions a specific site, you want to check: is there a prebuilt skill for it?
 
-- **Supported site** (`<!-- DOMAINS:START -->airbnb.com, aliexpress.com, amazon.com, booking.com, capterra.com, craigslist.org, facebook.com, g2.com, glassdoor.com, linkedin.com, madlan.co.il, maps.google.com, news.ycombinator.com, reddit.com, substack.com, target.com, tiktok.com, walmart.com, x.com, yad2.co.il, zillow.com<!-- DOMAINS:END -->`) → load the site's skill, follow its instructions.
+- **Supported site** (`<!-- DOMAINS:START -->airbnb.com, aliexpress.com, amazon.com, booking.com, capterra.com, craigslist.org, facebook.com, g2.com, glassdoor.com, instagram.com, linkedin.com, madlan.co.il, maps.google.com, news.ycombinator.com, reddit.com, substack.com, target.com, tiktok.com, walmart.com, x.com, yad2.co.il, zillow.com<!-- DOMAINS:END -->`) → load the site's skill, follow its instructions.
 - **Unsupported site** → handle the request the way you normally would.
 
 ## When to skip this umbrella
