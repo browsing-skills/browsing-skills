@@ -53,6 +53,9 @@ Use `mode: "display"` for self-contained HTML output.
   execute: function(params) {
     var mode = (params && params.mode) || "data";
     var data = {};
+    function esc(value) {
+      return String(value || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
 
     // Profile URL (canonical, no query string)
     data.profileUrl = window.location.href.split("?")[0];
@@ -178,15 +181,15 @@ Use `mode: "display"` for self-contained HTML output.
 
     if (mode === "display") {
       var h = "<div style=\"font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#0f0f0f;color:#e0e0e0;padding:24px;max-width:640px;margin:0 auto;border-radius:12px;\">";
-      if (data.logoUrl) h += "<img src=\"" + data.logoUrl + "\" style=\"width:64px;height:64px;border-radius:8px;margin-bottom:12px;display:block;object-fit:contain;background:#1a1a1a;\">";
-      h += "<a href=\"" + (data.profileUrl || "#") + "\" style=\"color:#70b5f9;text-decoration:none;font-weight:700;font-size:20px;\">" + (data.name || "Unknown") + "</a>";
-      if (data.tagline) h += "<div style=\"color:#ccc;font-size:14px;margin-top:4px;\">" + data.tagline + "</div>";
-      if (data.followerCount) h += "<div style=\"color:#888;font-size:13px;margin-top:2px;\">" + data.followerCount + "</div>";
-      if (data.employeeCount) h += "<div style=\"color:#888;font-size:13px;\">" + data.employeeCount + "</div>";
-      if (data.about) h += "<div style=\"margin-top:16px;border-top:1px solid #333;padding-top:12px;font-size:14px;line-height:1.6;\">" + data.about + "</div>";
+      if (data.logoUrl) h += "<img src=\"" + esc(data.logoUrl) + "\" style=\"width:64px;height:64px;border-radius:8px;margin-bottom:12px;display:block;object-fit:contain;background:#1a1a1a;\">";
+      h += "<a href=\"" + esc(data.profileUrl || "#") + "\" style=\"color:#70b5f9;text-decoration:none;font-weight:700;font-size:20px;\">" + esc(data.name || "Unknown") + "</a>";
+      if (data.tagline) h += "<div style=\"color:#ccc;font-size:14px;margin-top:4px;\">" + esc(data.tagline) + "</div>";
+      if (data.followerCount) h += "<div style=\"color:#888;font-size:13px;margin-top:2px;\">" + esc(data.followerCount) + "</div>";
+      if (data.employeeCount) h += "<div style=\"color:#888;font-size:13px;\">" + esc(data.employeeCount) + "</div>";
+      if (data.about) h += "<div style=\"margin-top:16px;border-top:1px solid #333;padding-top:12px;font-size:14px;line-height:1.6;\">" + esc(data.about) + "</div>";
       h += "<div style=\"margin-top:16px;border-top:1px solid #333;padding-top:12px;\">";
       var details = [
-        ["Website", data.website ? "<a href=\"" + data.website + "\" style=\"color:#70b5f9;\">" + data.website + "</a>" : null],
+        ["Website", data.website ? "<a href=\"" + esc(data.website) + "\" style=\"color:#70b5f9;\">" + esc(data.website) + "</a>" : null],
         ["Industry", data.industry],
         ["Company size", data.companySize],
         ["Headquarters", data.headquarters],
@@ -195,7 +198,7 @@ Use `mode: "display"` for self-contained HTML output.
       ];
       for (var di = 0; di < details.length; di++) {
         if (details[di][1]) {
-          h += "<div style=\"margin-bottom:6px;font-size:13px;\"><span style=\"color:#888;\">" + details[di][0] + ":</span> " + details[di][1] + "</div>";
+          h += "<div style=\"margin-bottom:6px;font-size:13px;\"><span style=\"color:#888;\">" + esc(details[di][0]) + ":</span> " + (details[di][0] === "Website" ? details[di][1] : esc(details[di][1])) + "</div>";
         }
       }
       h += "</div></div>";

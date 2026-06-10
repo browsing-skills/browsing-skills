@@ -62,6 +62,9 @@ Use `mode: "display"` for self-contained HTML output.
     var mode = (params && params.mode) || "data";
     var limit = (params && params.limit) || 25;
     var data = {};
+    function esc(value) {
+      return String(value || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
 
     // Extract query and location from the current URL
     var urlParams = new URLSearchParams(window.location.search);
@@ -140,16 +143,16 @@ Use `mode: "display"` for self-contained HTML output.
     if (mode === "display") {
       var h = "<div style=\"font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#0f0f0f;color:#e0e0e0;padding:24px;max-width:700px;margin:0 auto;border-radius:12px;\">";
       h += "<h2 style=\"margin:0 0 4px;font-size:18px;\">Job Search Results</h2>";
-      h += "<div style=\"color:#888;font-size:13px;margin-bottom:16px;\">Query: <strong>" + (data.query || "") + "</strong> &middot; Location: <strong>" + (data.location || "Any") + "</strong>";
+      h += "<div style=\"color:#888;font-size:13px;margin-bottom:16px;\">Query: <strong>" + esc(data.query || "") + "</strong> &middot; Location: <strong>" + esc(data.location || "Any") + "</strong>";
       if (data.totalResults !== null) h += " &middot; ~" + data.totalResults + " results";
       h += "</div>";
       for (var ji = 0; ji < data.jobs.length; ji++) {
         var jb = data.jobs[ji];
         h += "<div style=\"border-top:1px solid #333;padding:12px 0;\">";
-        h += "<a href=\"" + (jb.jobUrl || "#") + "\" style=\"color:#70b5f9;text-decoration:none;font-weight:600;font-size:15px;\">" + (jb.title || "Untitled") + "</a>";
-        h += "<div style=\"color:#ccc;font-size:13px;margin-top:2px;\">" + (jb.company || "") + " &middot; " + (jb.location || "") + "</div>";
+        h += "<a href=\"" + esc(jb.jobUrl || "#") + "\" style=\"color:#70b5f9;text-decoration:none;font-weight:600;font-size:15px;\">" + esc(jb.title || "Untitled") + "</a>";
+        h += "<div style=\"color:#ccc;font-size:13px;margin-top:2px;\">" + esc(jb.company || "") + " &middot; " + esc(jb.location || "") + "</div>";
         h += "<div style=\"color:#888;font-size:12px;margin-top:2px;\">";
-        if (jb.datePosted) h += jb.datePosted;
+        if (jb.datePosted) h += esc(jb.datePosted);
         if (jb.isEasyApply) h += " <span style=\"color:#4caf50;margin-left:8px;\">Easy Apply</span>";
         h += "</div></div>";
       }

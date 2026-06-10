@@ -53,6 +53,9 @@ Use `mode: "display"` for self-contained HTML output.
   execute: function(params) {
     var mode = (params && params.mode) || "data";
     var data = {};
+    function esc(value) {
+      return String(value || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
 
     data.profileUrl = window.location.href.split("?")[0];
 
@@ -131,6 +134,16 @@ Use `mode: "display"` for self-contained HTML output.
       } else { eduI++; }
     }
 
+    var skillLines = extractSectionLines("Skills", ["Recommendations", "Languages", "Interests", "Activity"], 30);
+    data.skills = [];
+    for (var sk = 0; sk < skillLines.length && data.skills.length < 10; sk++) {
+      var skill = skillLines[sk];
+      if (/^(show all|see all|endorse|message|follow|connect)/i.test(skill)) continue;
+      if (skill.length < 2 || skill.length > 80) continue;
+      if (/\d+\s+endorsements?/i.test(skill)) continue;
+      if (data.skills.indexOf(skill) === -1) data.skills.push(skill);
+    }
+
     var avatarSelectors = ["img.pv-top-card-profile-picture__image", "img.profile-photo-edit__preview", "button[aria-label*='photo'] img", "img[alt*='profile' i]"];
     for (var ai = 0; ai < avatarSelectors.length; ai++) {
       var aEl = document.querySelector(avatarSelectors[ai]);
@@ -139,17 +152,17 @@ Use `mode: "display"` for self-contained HTML output.
 
     if (mode === "display") {
       var h = "<div style=\"font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#0f0f0f;color:#e0e0e0;padding:24px;max-width:640px;margin:0 auto;border-radius:12px;\">";
-      if (data.avatarUrl) h += "<img src=\"" + data.avatarUrl + "\" style=\"width:72px;height:72px;border-radius:50%;margin-bottom:12px;display:block;\">";
-      h += "<a href=\"" + (data.profileUrl || "#") + "\" style=\"color:#70b5f9;text-decoration:none;font-weight:700;font-size:20px;\">" + (data.name || "Unknown") + "</a>";
-      if (data.headline) h += "<div style=\"color:#ccc;font-size:14px;margin-top:4px;\">" + data.headline + "</div>";
-      if (data.location) h += "<div style=\"color:#888;font-size:13px;margin-top:2px;\">" + data.location + "</div>";
-      if (data.connectionsCount) h += "<div style=\"color:#888;font-size:13px;margin-top:2px;\">" + data.connectionsCount + "</div>";
-      if (data.about) h += "<div style=\"margin-top:16px;border-top:1px solid #333;padding-top:12px;font-size:14px;line-height:1.6;\">" + data.about + "</div>";
+      if (data.avatarUrl) h += "<img src=\"" + esc(data.avatarUrl) + "\" style=\"width:72px;height:72px;border-radius:50%;margin-bottom:12px;display:block;\">";
+      h += "<a href=\"" + esc(data.profileUrl || "#") + "\" style=\"color:#70b5f9;text-decoration:none;font-weight:700;font-size:20px;\">" + esc(data.name || "Unknown") + "</a>";
+      if (data.headline) h += "<div style=\"color:#ccc;font-size:14px;margin-top:4px;\">" + esc(data.headline) + "</div>";
+      if (data.location) h += "<div style=\"color:#888;font-size:13px;margin-top:2px;\">" + esc(data.location) + "</div>";
+      if (data.connectionsCount) h += "<div style=\"color:#888;font-size:13px;margin-top:2px;\">" + esc(data.connectionsCount) + "</div>";
+      if (data.about) h += "<div style=\"margin-top:16px;border-top:1px solid #333;padding-top:12px;font-size:14px;line-height:1.6;\">" + esc(data.about) + "</div>";
       if (data.experience && data.experience.length) {
         h += "<div style=\"margin-top:16px;\"><strong>Experience</strong><ul style=\"margin:8px 0;padding-left:20px;\">";
         for (var ei = 0; ei < data.experience.length; ei++) {
           var exp = data.experience[ei];
-          h += "<li style=\"margin-bottom:6px;font-size:13px;\"><strong>" + (exp.title || "") + "</strong> at " + (exp.company || "") + (exp.duration ? " · " + exp.duration : "") + "</li>";
+          h += "<li style=\"margin-bottom:6px;font-size:13px;\"><strong>" + esc(exp.title || "") + "</strong> at " + esc(exp.company || "") + (exp.duration ? " · " + esc(exp.duration) : "") + "</li>";
         }
         h += "</ul></div>";
       }
@@ -157,9 +170,16 @@ Use `mode: "display"` for self-contained HTML output.
         h += "<div style=\"margin-top:12px;\"><strong>Education</strong><ul style=\"margin:8px 0;padding-left:20px;\">";
         for (var di = 0; di < data.education.length; di++) {
           var edu = data.education[di];
-          h += "<li style=\"font-size:13px;\">" + (edu.school || "") + (edu.degree ? " — " + edu.degree : "") + (edu.years ? " · " + edu.years : "") + "</li>";
+          h += "<li style=\"font-size:13px;\">" + esc(edu.school || "") + (edu.degree ? " — " + esc(edu.degree) : "") + (edu.years ? " · " + esc(edu.years) : "") + "</li>";
         }
         h += "</ul></div>";
+      }
+      if (data.skills && data.skills.length) {
+        h += "<div style=\"margin-top:12px;\"><strong>Skills</strong><div style=\"display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;\">";
+        for (var ski = 0; ski < data.skills.length; ski++) {
+          h += "<span style=\"font-size:12px;border:1px solid #333;border-radius:999px;padding:3px 8px;color:#ccc;\">" + esc(data.skills[ski]) + "</span>";
+        }
+        h += "</div></div>";
       }
       h += "</div>";
       return { content: [{ type: "text", text: h }] };
