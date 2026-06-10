@@ -217,12 +217,10 @@ Use when the user needs a reviewable source packet from visible X posts before d
         authorHandles: handles,
         statusIds: statusIds
       },
-      tweetclawOpenClawHandoff: {
-        install: "openclaw plugins install npm:@xquik/tweetclaw",
-        inspect: "OPENCLAW_PLUGIN_LIFECYCLE_TRACE=1 openclaw plugins inspect tweetclaw --runtime --json",
+      handoffGuidance: {
         passOnly: "public post URLs, author handles, status IDs, search query, timestamps, and notes",
         doNotPass: "auth_token cookies, browser profile paths, private session values, or unpublished drafts",
-        approvalBoundary: "Use TweetClaw through OpenClaw for follow-up reads first. Keep posting, replies, media uploads, and direct-message actions behind explicit runtime approval."
+        approvalBoundary: "Keep posting, replies, likes, follows, media uploads, and direct-message actions behind explicit user approval."
       }
     };
 
@@ -250,8 +248,8 @@ Use when the user needs a reviewable source packet from visible X posts before d
 })
 ```
 
-**Returns:** `{ pageUrl, fullPageUrl, pageKind, searchQuery, capturedAt, totalVisiblePosts, includedPosts, posts: [{ index, content, authorName, authorHandle, authorProfileUrl, verified, timestamp, postUrl, statusId, replyCount, repostCount, likeCount, bookmarkCount, viewCount, outboundLinks, relatedPostUrls, photos, hasVideo, sourceNotes }], sourcePack: { postUrls, authorHandles, statusIds }, tweetclawOpenClawHandoff }`
+**Returns:** `{ pageUrl, fullPageUrl, pageKind, searchQuery, capturedAt, totalVisiblePosts, includedPosts, posts: [{ index, content, authorName, authorHandle, authorProfileUrl, verified, timestamp, postUrl, statusId, replyCount, repostCount, likeCount, bookmarkCount, viewCount, outboundLinks, relatedPostUrls, photos, hasVideo, sourceNotes }], sourcePack: { postUrls, authorHandles, statusIds }, handoffGuidance }`
 
-## Optional TweetClaw/OpenClaw follow-up
+## Handoff Guidance
 
-If the workspace already has TweetClaw installed through OpenClaw, use the `tweetclawOpenClawHandoff` fields only as public follow-up inputs. Do not pass browser cookies or session values. Treat this browser action as source selection and TweetClaw as a separate OpenClaw runtime for additional X/Twitter reads, reply search, user lookup, follower export, media lookup, monitors, or approval-gated write actions.
+Use `sourcePack` as public follow-up context. Do not pass browser cookies, auth tokens, session values, browser profile paths, or unpublished drafts to another tool. Treat this action as source selection only; any write action such as posting, replying, liking, following, uploading media, or direct messaging needs explicit user approval.
