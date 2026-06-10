@@ -28,6 +28,7 @@ The library currently includes skills for:
 | LinkedIn | [`skills/linkedin.com`](./skills/linkedin.com) | `post-data` |
 | TikTok | [`skills/tiktok.com`](./skills/tiktok.com) | `get-post-analytics`, `get-posts-list`, `download-post-video` |
 | Facebook | [`skills/facebook.com`](./skills/facebook.com) | `marketplace-search`, `marketplace-listing-data`, `marketplace-seller-data` |
+| Hacker News | [`skills/news.ycombinator.com`](./skills/news.ycombinator.com) | `frontpage`, `post-data`, `search` |
 | Amazon | [`skills/amazon.com`](./skills/amazon.com) | `search`, `product-data`, `grocery-storefront`, `cart-data`, `add-to-cart` |
 | Walmart | [`skills/walmart.com`](./skills/walmart.com) | `search`, `product-data`, `cart-data`, `add-to-cart` |
 | Target | [`skills/target.com`](./skills/target.com) | `search`, `product-data`, `cart-data`, `add-to-cart` |
