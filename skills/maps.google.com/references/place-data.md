@@ -44,6 +44,9 @@ Use when the user has a specific Google Maps place URL or wants full details abo
   execute: function(params) {
     var mode = (params && params.mode) || "data";
     var data = {};
+    function esc(value) {
+      return String(value || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
 
     // Name — h1 is the most reliable signal on place pages
     var h1 = document.querySelector('h1');
@@ -167,24 +170,24 @@ Use when the user has a specific Google Maps place URL or wants full details abo
 
     if (mode === "display") {
       var h = "<div style=\"font-family:-apple-system,sans-serif;background:#fff;color:#202124;padding:24px;max-width:600px;margin:0 auto;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.2);\">";
-      h += "<h1 style=\"font-size:22px;margin:0 0 8px;\">" + (data.name || '') + "</h1>";
+      h += "<h1 style=\"font-size:22px;margin:0 0 8px;\">" + esc(data.name || '') + "</h1>";
       var meta = [];
       if (data.category) meta.push(data.category);
       if (data.priceLevel) meta.push(data.priceLevel);
-      if (meta.length) h += "<div style=\"color:#5f6368;margin-bottom:12px;\">" + meta.join(' · ') + "</div>";
+      if (meta.length) h += "<div style=\"color:#5f6368;margin-bottom:12px;\">" + esc(meta.join(' · ')) + "</div>";
       if (data.rating) {
-        h += "<div style=\"margin-bottom:12px;\"><span style=\"background:#188038;color:#fff;padding:3px 8px;border-radius:4px;\">&#9733; " + data.rating + "</span>";
-        if (data.reviewCount) h += " <span style=\"color:#5f6368;font-size:13px;\">(" + data.reviewCount + " reviews)</span>";
+        h += "<div style=\"margin-bottom:12px;\"><span style=\"background:#188038;color:#fff;padding:3px 8px;border-radius:4px;\">&#9733; " + esc(data.rating) + "</span>";
+        if (data.reviewCount) h += " <span style=\"color:#5f6368;font-size:13px;\">(" + esc(data.reviewCount) + " reviews)</span>";
         h += "</div>";
       }
-      if (data.address) h += "<div style=\"margin-bottom:8px;\"><strong>Address:</strong> " + data.address + "</div>";
-      if (data.phone) h += "<div style=\"margin-bottom:8px;\"><strong>Phone:</strong> " + data.phone + "</div>";
-      if (data.website) h += "<div style=\"margin-bottom:8px;\"><strong>Website:</strong> <a href=\"" + data.website + "\" style=\"color:#1a73e8;\">" + data.website + "</a></div>";
-      if (data.hours) h += "<div style=\"margin-bottom:8px;\"><strong>Hours:</strong> " + data.hours + "</div>";
+      if (data.address) h += "<div style=\"margin-bottom:8px;\"><strong>Address:</strong> " + esc(data.address) + "</div>";
+      if (data.phone) h += "<div style=\"margin-bottom:8px;\"><strong>Phone:</strong> " + esc(data.phone) + "</div>";
+      if (data.website) h += "<div style=\"margin-bottom:8px;\"><strong>Website:</strong> <a href=\"" + esc(data.website) + "\" style=\"color:#1a73e8;\">" + esc(data.website) + "</a></div>";
+      if (data.hours) h += "<div style=\"margin-bottom:8px;\"><strong>Hours:</strong> " + esc(data.hours) + "</div>";
       if (data.hoursSchedule && data.hoursSchedule.length > 0) {
         h += "<div style=\"margin-top:8px;\"><strong>Schedule:</strong><ul style=\"margin:4px 0;padding-left:20px;color:#5f6368;font-size:13px;\">";
         for (var si = 0; si < data.hoursSchedule.length; si++) {
-          h += "<li>" + data.hoursSchedule[si] + "</li>";
+          h += "<li>" + esc(data.hoursSchedule[si]) + "</li>";
         }
         h += "</ul></div>";
       }

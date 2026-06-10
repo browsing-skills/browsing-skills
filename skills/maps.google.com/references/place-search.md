@@ -46,6 +46,9 @@ Use when the user wants to search Google Maps for a type of place or business (e
     var limit = (params && params.limit) || 10;
     var mode = (params && params.mode) || "data";
     var places = [];
+    function esc(value) {
+      return String(value || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
 
     // Results live in [role="feed"] > div > div > a or similar structure
     var feed = document.querySelector('[role="feed"]');
@@ -132,20 +135,20 @@ Use when the user wants to search Google Maps for a type of place or business (e
 
     if (mode === "display") {
       var h = "<div style=\"font-family:-apple-system,sans-serif;background:#fff;color:#202124;padding:24px;max-width:700px;margin:0 auto;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.2);\">";
-      h += "<h2 style=\"margin:0 0 16px;font-size:18px;\">Google Maps: " + (result.query || '') + " (" + places.length + " results)</h2>";
+      h += "<h2 style=\"margin:0 0 16px;font-size:18px;\">Google Maps: " + esc(result.query || '') + " (" + places.length + " results)</h2>";
       for (var pi = 0; pi < places.length; pi++) {
         var p = places[pi];
         h += "<div style=\"padding:12px 0;border-bottom:1px solid #e8eaed;\">";
         h += "<div style=\"display:flex;justify-content:space-between;align-items:center;\">";
-        h += "<a href=\"" + p.url + "\" target=\"_blank\" style=\"font-weight:600;color:#1a73e8;text-decoration:none;font-size:15px;\">" + (p.name || '') + "</a>";
-        if (p.rating) h += "<span style=\"background:#188038;color:#fff;padding:2px 6px;border-radius:4px;font-size:13px;\">&#9733; " + p.rating + "</span>";
+        h += "<a href=\"" + esc(p.url) + "\" target=\"_blank\" style=\"font-weight:600;color:#1a73e8;text-decoration:none;font-size:15px;\">" + esc(p.name || '') + "</a>";
+        if (p.rating) h += "<span style=\"background:#188038;color:#fff;padding:2px 6px;border-radius:4px;font-size:13px;\">&#9733; " + esc(p.rating) + "</span>";
         h += "</div>";
         var meta = [];
         if (p.category) meta.push(p.category);
         if (p.address) meta.push(p.address);
         if (p.openStatus) meta.push(p.openStatus);
         if (p.reviewCount) meta.push(p.reviewCount + " reviews");
-        if (meta.length) h += "<div style=\"color:#5f6368;font-size:13px;margin-top:4px;\">" + meta.join(" · ") + "</div>";
+        if (meta.length) h += "<div style=\"color:#5f6368;font-size:13px;margin-top:4px;\">" + esc(meta.join(" · ")) + "</div>";
         h += "</div>";
       }
       h += "</div>";
