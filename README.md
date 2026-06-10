@@ -30,6 +30,7 @@ The library currently includes skills for:
 | Facebook | [`skills/facebook.com`](./skills/facebook.com) | `marketplace-search`, `marketplace-listing-data`, `marketplace-seller-data` |
 | Hacker News | [`skills/news.ycombinator.com`](./skills/news.ycombinator.com) | `frontpage`, `post-data`, `search` |
 | Substack | [`skills/substack.com`](./skills/substack.com) | `publication-data`, `post-data` |
+| Craigslist | [`skills/craigslist.org`](./skills/craigslist.org) | `listing-search`, `listing-data` |
 | Amazon | [`skills/amazon.com`](./skills/amazon.com) | `search`, `product-data`, `grocery-storefront`, `cart-data`, `add-to-cart` |
 | Walmart | [`skills/walmart.com`](./skills/walmart.com) | `search`, `product-data`, `cart-data`, `add-to-cart` |
 | Target | [`skills/target.com`](./skills/target.com) | `search`, `product-data`, `cart-data`, `add-to-cart` |
