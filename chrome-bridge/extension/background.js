@@ -200,7 +200,23 @@ function connect() {
     reconnectDelay = Math.min(reconnectDelay * 2, 30000);
   };
 
-  ws.onerror = () => { ws.close(); };
+  ws.onerror = (error) => {
+    console.error('[Action Bridge] WebSocket error:', error);
+    // Check if it's a connection refused error
+    if (error.message && error.message.includes('ERR_CONNECTION_REFUSED')) {
+      console.log('[Action Bridge] Connection refused, will retry in 30 seconds');
+      ws.close();
+      // Set a fixed 30-second retry for connection refused errors
+      setTimeout(() => {
+        if (!ws || ws.readyState !== WebSocket.OPEN) {
+          console.log('[Action Bridge] Retrying connection after connection refused');
+          connect();
+        }
+      }, 30000);
+    } else {
+      ws.close();
+    }
+  };
 }
 
 async function getActiveTabId() {
