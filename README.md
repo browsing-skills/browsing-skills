@@ -33,6 +33,7 @@ The library currently includes skills for:
 | Craigslist | [`skills/craigslist.org`](./skills/craigslist.org) | `listing-search`, `listing-data` |
 | Yad2 | [`skills/yad2.co.il`](./skills/yad2.co.il) | `property-search`, `listing-data` |
 | Madlan | [`skills/madlan.co.il`](./skills/madlan.co.il) | `property-search`, `listing-data` |
+| Zillow | [`skills/zillow.com`](./skills/zillow.com) | `property-search`, `listing-data` |
 | Amazon | [`skills/amazon.com`](./skills/amazon.com) | `search`, `product-data`, `grocery-storefront`, `cart-data`, `add-to-cart` |
 | Walmart | [`skills/walmart.com`](./skills/walmart.com) | `search`, `product-data`, `cart-data`, `add-to-cart` |
 | Target | [`skills/target.com`](./skills/target.com) | `search`, `product-data`, `cart-data`, `add-to-cart` |
