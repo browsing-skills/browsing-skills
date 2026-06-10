@@ -73,6 +73,17 @@ Use when the user wants the full details of a specific Yad2 property listing.
     data.dealType        = getTestId("deal-type-value");
     data.condition       = getTestId("property-condition-value");
     data.areaSqm         = getTestId("square-meter-build-value");
+    data.rooms           = getTestId("rooms-value");
+    data.floor           = getTestId("floor-value");
+    data.area            = data.areaSqm;
+    if (!data.rooms && data.buildingDetails) {
+      var roomsMatch = data.buildingDetails.match(/([\d.]+)\s*חדרים/);
+      if (roomsMatch) data.rooms = roomsMatch[1];
+    }
+    if (!data.floor && data.buildingDetails) {
+      var floorMatch = data.buildingDetails.match(/קומה\s*([^\s/]+(?:\/[^\s]+)?)/);
+      if (floorMatch) data.floor = floorMatch[1];
+    }
     data.totalFloors     = getTestId("building-top-floor-value");
     data.parking         = getTestId("parking-value");
     data.pricePerSqm     = getTestId("price-per-squaremeter-value");
@@ -134,7 +145,7 @@ Use when the user wants the full details of a specific Yad2 property listing.
 })
 ```
 
-**Returns:** `{ listingUrl, title, address, price, rooms, floor, area, description, contactName, phone, images }`
+**Returns:** `{ listingUrl, title, address, fullAddress, price, rooms, floor, area, areaSqm, buildingDetails, dealType, condition, totalFloors, parking, pricePerSqm, entranceDate, publishedDate, amenities, description, contactName, phone, images }`
 
 ---
 
