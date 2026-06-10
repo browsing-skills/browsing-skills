@@ -30,6 +30,8 @@ The library currently includes skills for:
 | Facebook | [`skills/facebook.com`](./skills/facebook.com) | `marketplace-search`, `marketplace-listing-data`, `marketplace-seller-data` |
 | Hacker News | [`skills/news.ycombinator.com`](./skills/news.ycombinator.com) | `frontpage`, `post-data`, `search` |
 | Substack | [`skills/substack.com`](./skills/substack.com) | `publication-data`, `post-data` |
+| G2 | [`skills/g2.com`](./skills/g2.com) | `product-overview`, `product-reviews` |
+| Capterra | [`skills/capterra.com`](./skills/capterra.com) | `product-overview`, `product-reviews` |
 | Craigslist | [`skills/craigslist.org`](./skills/craigslist.org) | `listing-search`, `listing-data` |
 | Yad2 | [`skills/yad2.co.il`](./skills/yad2.co.il) | `property-search`, `listing-data` |
 | Madlan | [`skills/madlan.co.il`](./skills/madlan.co.il) | `property-search`, `listing-data` |
