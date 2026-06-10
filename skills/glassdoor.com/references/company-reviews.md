@@ -150,4 +150,4 @@ Example: `https://www.glassdoor.com/Reviews/Google-Reviews-E9079.htm`. The slug 
 })
 ```
 
-**Returns:** `{ company, reviews: [{ rating, title, date, role, pros, cons, helpful }], count }`
+**Returns:** `{ url, extractedAt, company, reviews: [{ rating, title, date, role, pros, cons, helpful }], count }`

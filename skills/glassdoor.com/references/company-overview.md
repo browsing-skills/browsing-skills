@@ -184,4 +184,4 @@ The `<slug>` is the company-specific path segment used by Glassdoor, e.g. `Googl
 })
 ```
 
-**Returns:** `{ name, rating, reviewCount, ceoName, ceoApprovalPct, recommendPct, website, size, founded, industry, headquarters, revenue, type }`
+**Returns:** `{ url, extractedAt, name, rating, reviewCount, ceoName, ceoApprovalPct, recommendPct, website, size, founded, industry, headquarters, revenue, type }`
