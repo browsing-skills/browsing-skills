@@ -1,6 +1,6 @@
 ---
 name: browsing-x
-description: "Use when the user wants to interact with X (formerly Twitter) — search for posts, extract a specific post's data (content + engagement + author), extract a user's profile (bio, followers, etc.), extract posts from a user's profile timeline, or extract posts from the home feed (For You or Following tab). Works on x.com and twitter.com. Requires a logged-in session (auth_token cookie) and a real browser — X is a JS-rendered SPA."
+description: "Use when the user wants to interact with X (formerly Twitter) - search for posts, extract a specific post's data (content + engagement + author), extract a user's profile, extract visible posts from a user's timeline or home feed, or assemble visible source context for review, research, fact-checking, reporting, or archiving. Works on x.com and twitter.com. Requires a logged-in session (auth_token cookie) and a real browser - X is a JS-rendered SPA."
 ---
 
 # X (Twitter) — Browsing Skill
@@ -14,6 +14,7 @@ Use this index to choose the X action that matches the user request, then open t
 - **profile-data** — Extract an X user profile, including bio, follower counts, avatar, website, and account metadata. Full spec: [references/profile-data.md](references/profile-data.md).
 - **user-timeline** — Extract visible posts from a user's profile timeline. Full spec: [references/user-timeline.md](references/user-timeline.md).
 - **following-feed** — Extract visible posts from the X home feed (For You or Following tab). Full spec: [references/following-feed.md](references/following-feed.md).
+- **source-context** - Assemble visible posts, links, media flags, metrics, and canonical URLs into a source packet for review, research, fact-checking, reporting, or archiving. Full spec: [references/source-context.md](references/source-context.md).
 
 ## Benchmarks
 
@@ -26,4 +27,4 @@ Benchmarks compare the maintained skill action against a no-skill browser agent 
 | profile-data | 1,865 / ~12.3s | 324 / failed | Skill complete; no-skill one-shot eval failed. |
 | user-timeline | TBD | TBD | Not yet benchmarked. |
 | following-feed | TBD | TBD | Not yet benchmarked. |
-
+| source-context | TBD | TBD | Planned. |

@@ -46,6 +46,9 @@ Use when the user wants to see a specific user's recent posts from their profile
   execute: function(params) {
     var mode = (params && params.mode) || "data";
     var data = {};
+    function esc(value) {
+      return String(value || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
     var pathParts = window.location.pathname.split("/").filter(Boolean);
     data.profileHandle = pathParts.length > 0 ? "@" + pathParts[0] : "";
     var articles = document.querySelectorAll("article[data-testid=tweet]");
@@ -89,15 +92,15 @@ Use when the user wants to see a specific user's recent posts from their profile
     data.totalResults = data.posts.length;
     if (mode === "display") {
       var h = "<div style=\"font-family:-apple-system,sans-serif;background:#0f0f0f;color:#e0e0e0;padding:24px;max-width:700px;margin:0 auto;border-radius:12px;\">";
-      h += "<h2 style=\"color:#fff;margin:0 0 16px;\">Timeline: " + data.profileHandle + " (" + data.totalResults + " posts)</h2>";
+      h += "<h2 style=\"color:#fff;margin:0 0 16px;\">Timeline: " + esc(data.profileHandle) + " (" + data.totalResults + " posts)</h2>";
       for (var m = 0; m < data.posts.length; m++) {
         var r = data.posts[m];
         h += "<div style=\"padding:12px 0;border-bottom:1px solid #222;\">";
-        h += "<div style=\"font-weight:600;\">" + (r.authorName||"") + " <span style=\"color:#888;font-weight:normal;\">" + (r.authorHandle||"") + "</span></div>";
-        h += "<div style=\"margin:8px 0;line-height:1.5;\">" + r.content.substring(0,280) + "</div>";
+        h += "<div style=\"font-weight:600;\">" + esc(r.authorName||"") + " <span style=\"color:#888;font-weight:normal;\">" + esc(r.authorHandle||"") + "</span></div>";
+        h += "<div style=\"margin:8px 0;line-height:1.5;\">" + esc((r.content || "").substring(0,280)) + "</div>";
         h += "<div style=\"color:#888;font-size:13px;display:flex;gap:16px;\">";
-        h += "<span>💬 " + (r.replies||"0") + "</span><span>🔄 " + (r.reposts||"0") + "</span><span>❤️ " + (r.likes||"0") + "</span>";
-        if (r.views) h += "<span>👁 " + r.views + "</span>";
+        h += "<span>💬 " + esc(r.replies||"0") + "</span><span>🔄 " + esc(r.reposts||"0") + "</span><span>❤️ " + esc(r.likes||"0") + "</span>";
+        if (r.views) h += "<span>👁 " + esc(r.views) + "</span>";
         h += "</div></div>";
       }
       h += "</div>";
